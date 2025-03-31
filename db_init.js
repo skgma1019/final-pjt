@@ -42,7 +42,7 @@ db.serialize(() => {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id INTEGER NOT NULL,
       tag TEXT NOT NULL,
-      nickname TEXT,
+      nickname TEXT UNIQUE,
       trophies INTEGER,
       clan_name TEXT,
       arena TEXT,

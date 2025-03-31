@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Clash Royale 플레이어 조회</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      background: #f4f4f4;
+      text-align: center;
+      padding: 30px;
+    }
+
+    .container {
+      max-width: 500px;
+      margin: 0 auto;
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    input {
+      width: 80%;
+      padding: 10px;
+      margin: 10px 0;
+      font-size: 16px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+    }
+
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      background: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #45a049;
+    }
+
+    #result {
+      margin-top: 20px;
+      text-align: left;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .error {
+      color: red;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Clash Royale 플레이어 조회</h1>
+    <input type="text" id="tagInput" placeholder="플레이어 태그 (예:    )" />
+    <button id="searchBtn">검색</button>
+    <div id="result" class="hidden">
+      <h2 id="playerName"></h2>
+      <p>🏆 트로피: <span id="trophies"></span></p>
+      <p>🎖️ 클랜: <span id="clan"></span></p>
+    </div>
+    <div id="error" class="error"></div>
+  </div>
+
+  <script>
+    document.getElementById('searchBtn').addEventListener('click', async () => {
+      const tag = document.getElementById('tagInput').value.trim().toUpperCase().replace('#', '');
+      const resultDiv = document.getElementById('result');
+      const errorDiv = document.getElementById('error');
+  
+      resultDiv.innerHTML = ''; // 초기화
+      errorDiv.textContent = '';
+  
+      if (!tag) {
+        errorDiv.textContent = '플레이어 태그를 입력해주세요!';
+        return;
+      }
+  
+      try {
+        const res = await fetch(`http://localhost:3000/api/player/${tag}`);
+        if (!res.ok) {
+          const errorData = await res.json();
+          throw new Error(errorData.message || '플레이어를 찾을 수 없습니다.');
+        }
+  
+        const data = await res.json();
+  
+        // 📌 주요 정보 정리
+        const infoHtml = `
+          <h2>${data.name} <small>(#${data.tag})</small></h2>
+          <p><strong>🏆 트로피:</strong> ${data.trophies}</p>
+          <p><strong>🎯 레벨:</strong> ${data.expLevel}</p>
+          <p><strong>✅ 총 승리:</strong> ${data.wins}</p>
+          <p><strong>❌ 총 패배:</strong> ${data.losses}</p>
+          <p><strong>👑 3크라운 승리:</strong> ${data.threeCrownWins ?? '정보 없음'}</p>
+          <p><strong>🎖️ 클랜:</strong> ${data.clan ? `${data.clan.name} (#${data.clan.tag})` : '없음'}</p>
+          <p><strong>💖 좋아하는 카드:</strong> ${data.currentFavouriteCard ? data.currentFavouriteCard.name : '정보 없음'}</p>
+          <p><strong>📦 총 전투 수:</strong> ${data.battleCount}</p>
+          <hr/>
+          <h3>현재 덱:</h3>
+          <ul>
+            ${data.currentDeck?.map(card => `<li>${card.name} (레벨 ${card.level})</li>`).join('')}
+          </ul>
+        `;
+  
+        resultDiv.innerHTML = infoHtml;
+        resultDiv.classList.remove('hidden');
+  
+      } catch (err) {
+        console.error('[❌ 오류 발생]', err);
+        errorDiv.textContent = err.message || '오류가 발생했습니다.';
+      }
+    });
+  </script>
+  
+</body>
+</html>

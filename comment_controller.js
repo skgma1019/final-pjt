@@ -47,10 +47,11 @@ router.get('/articles/:id/comments', (req, res) => {
   const articleId = req.params.id;
 
   const query = `
-    SELECT id, user_id, content, created_at
+    SELECT comments.id, comments.user_id, users.email, comments.content, comments.created_at
     FROM comments
-    WHERE article_id = ?
-    ORDER BY created_at DESC
+    JOIN users ON comments.user_id = users.id
+    WHERE comments.article_id = ?
+    ORDER BY comments.created_at DESC
   `;
 
   db.all(query, [articleId], (err, rows) => {
@@ -91,4 +92,42 @@ router.delete('/comments/:id', authenticateToken, (req, res) => {
       });
     });
   });
-  
+
+// PATCH /comments/:id - 댓글 수정 (작성자만 가능)
+router.patch('/comments/:id', authenticateToken, (req, res) => {
+  const db = new sqlite3.Database('./clash_community.db');
+  const commentId = req.params.id;
+  const { content } = req.body;
+
+  if (!content) {
+    return res.status(400).json({ error: '수정할 내용이 없습니다.' });
+  }
+
+  // 1. 댓글 존재 여부 및 작성자 확인
+  db.get(`SELECT * FROM comments WHERE id = ?`, [commentId], (err, comment) => {
+    if (err || !comment) {
+      return res.status(404).json({ error: '해당 댓글이 존재하지 않습니다.' });
+    }
+
+    if (comment.user_id !== req.user.id) {
+      return res.status(403).json({ error: '작성자만 댓글을 수정할 수 있습니다.' });
+    }
+
+    // 2. 수정 실행
+    const query = `
+      UPDATE comments
+      SET content = ?
+      WHERE id = ?
+    `;
+
+    db.run(query, [content, commentId], function (err) {
+      if (err) {
+        console.error('❌ 댓글 수정 오류:', err.message);
+        return res.status(500).json({ error: '댓글 수정 실패' });
+      }
+
+      res.json({ message: '댓글이 수정되었습니다.', updatedId: commentId });
+      db.close();
+    });
+  });
+});

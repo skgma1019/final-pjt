@@ -42,9 +42,11 @@ router.get('/articles', (req, res) => {
   const db = new sqlite3.Database('./clash_community.db');
 
   const query = `
-    SELECT id, title, content, user_id, tags, created_at
+    SELECT articles.id, articles.title, articles.content, articles.user_id, articles.tags, articles.created_at, users_tag.nickname, articles.likes
     FROM articles
-    ORDER BY created_at DESC
+    LEFT JOIN users_tag ON articles.user_id = users_tag.user_id
+    ORDER BY articles.created_at DESC
+
   `;
 
   db.all(query, [], (err, rows) => {
@@ -58,15 +60,17 @@ router.get('/articles', (req, res) => {
   });
 });
 
+
 // GET /articles/:id - 특정 게시글 조회
 router.get('/articles/:id', (req, res) => {
   const db = new sqlite3.Database('./clash_community.db');
   const articleId = req.params.id;
 
   const query = `
-    SELECT id, title, content, user_id, tags, created_at
+    SELECT articles.id, articles.title, articles.content, articles.user_id, articles.tags, articles.created_at, users_tag.nickname, articles.likes
     FROM articles
-    WHERE id = ?
+    LEFT JOIN users_tag ON articles.user_id = users_tag.user_id
+    ORDER BY articles.created_at DESC
   `;
 
   db.get(query, [articleId], (err, row) => {
@@ -83,6 +87,7 @@ router.get('/articles/:id', (req, res) => {
     db.close();
   });
 });
+
 
 // PUT /articles/:id - 게시글 수정
 router.put('/articles/:id', authenticateToken, (req, res) => {
@@ -216,10 +221,11 @@ router.get('/my-articles', authenticateToken, (req, res) => {
   const userId = req.user.id;
 
   const query = `
-    SELECT id, title, content, tags, created_at
+    SELECT articles.id, articles.title, articles.content, articles.user_id, articles.tags, articles.created_at, users_tag.nickname, articles.likes
     FROM articles
-    WHERE user_id = ?
-    ORDER BY created_at DESC
+    LEFT JOIN users_tag ON articles.user_id = users_tag.user_id
+    ORDER BY articles.created_at DESC
+
   `;
 
   db.all(query, [userId], (err, rows) => {

@@ -1,127 +1,292 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Clash Royale 플레이어 조회</title>
+  <meta charset="UTF-8">
+  <title>게시글 목록 & 글 작성</title>
   <style>
     body {
-      font-family: sans-serif;
+      font-family: Arial, sans-serif;
+      margin: 20px;
       background: #f4f4f4;
-      text-align: center;
-      padding: 30px;
     }
-
-    .container {
-      max-width: 500px;
-      margin: 0 auto;
-      background: white;
+    /* 내비게이션 바 스타일 */
+    .nav-bar {
+      text-align: right;
+      margin-bottom: 20px;
+    }
+    .nav-bar a {
+      margin-left: 10px;
+      text-decoration: none;
+      color: #fff;
+      background: #007bff;
+      padding: 8px 12px;
+      border-radius: 4px;
+    }
+    .nav-bar a:hover {
+      background: #0056b3;
+    }
+    /* 글 작성 폼 스타일 */
+    .form-container {
+      max-width: 600px;
+      margin: 0 auto 30px;
+      background: #fff;
       padding: 20px;
-      border-radius: 12px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      border-radius: 8px;
+      box-shadow: 0 0 8px rgba(0,0,0,0.1);
     }
-
-    input {
-      width: 80%;
-      padding: 10px;
-      margin: 10px 0;
-      font-size: 16px;
+    .form-container h2 {
+      margin-top: 0;
+    }
+    .form-container label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+    .form-container input[type="text"],
+    .form-container textarea {
+      width: 100%;
+      padding: 8px;
+      margin-bottom: 15px;
       border: 1px solid #ccc;
-      border-radius: 6px;
+      border-radius: 4px;
+      box-sizing: border-box;
     }
-
-    button {
-      padding: 10px 20px;
-      font-size: 16px;
-      background: #4CAF50;
-      color: white;
+    .form-container button {
+      background: #007bff;
       border: none;
-      border-radius: 6px;
+      color: #fff;
+      padding: 10px 15px;
+      border-radius: 4px;
       cursor: pointer;
     }
-
-    button:hover {
-      background: #45a049;
+    .form-container button:hover {
+      background: #0056b3;
     }
-
-    #result {
-      margin-top: 20px;
-      text-align: left;
-    }
-
-    .hidden {
-      display: none;
-    }
-
-    .error {
-      color: red;
+    .message {
+      text-align: center;
       margin-top: 10px;
+      font-weight: bold;
     }
+    /* 게시글 목록 스타일 */
+    .post {
+      background: #fff;
+      border: 1px solid #ddd;
+      padding: 15px;
+      margin-bottom: 20px;
+      border-radius: 5px;
+    }
+    .post h2 {
+      margin: 0 0 10px;
+    }
+    .post .meta {
+      color: #777;
+      font-size: 0.9em;
+      margin-bottom: 10px;
+      
+    }
+    .comments-section ul {
+    list-style: none;
+    padding-left: 0;
+    margin-top: 10px;
+  }
+  .comments-section li {
+    background: #f2f2f2;
+    margin-bottom: 5px;
+    padding: 5px 10px;
+    border-radius: 4px;
+  }
+  .comment-form {
+    margin-top: 10px;
+  }
+  .comment-form input {
+    padding: 5px;
+    width: 80%;
+    border-radius: 3px;
+    border: 1px solid #ccc;
+  }
+  .comment-form button {
+    padding: 5px 10px;
+    margin-left: 5px;
+  }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>Clash Royale 플레이어 조회</h1>
-    <input type="text" id="tagInput" placeholder="플레이어 태그 (예:    )" />
-    <button id="searchBtn">검색</button>
-    <div id="result" class="hidden">
-      <h2 id="playerName"></h2>
-      <p>🏆 트로피: <span id="trophies"></span></p>
-      <p>🎖️ 클랜: <span id="clan"></span></p>
-    </div>
-    <div id="error" class="error"></div>
+  <!-- 내비게이션 바 -->
+  <div class="nav-bar">
+    <a href="login.html">로그인</a>
+    <a href="register.html">회원가입</a>
+  </div>
+
+  <!-- 글 작성 폼 -->
+  <div class="form-container">
+    <h2>새 글 작성하기</h2>
+    <form id="postForm">
+      <label for="title">제목</label>
+      <input type="text" id="title" name="title" required>
+      
+      <label for="content">내용</label>
+      <textarea id="content" name="content" rows="10" required></textarea>
+      
+      <label for="tags">태그 (쉼표로 구분)</label>
+      <input type="text" id="tags" name="tags">
+      
+      <!-- 테스트용 JWT 토큰 입력, 실제 서비스에서는 localStorage 또는 쿠키를 사용 -->
+      <label for="token">JWT 토큰 (테스트용)</label>
+      <input type="text" id="token" name="token" placeholder="토큰 입력 (없으면 localStorage 사용)">
+      
+      <button type="submit">글 작성</button>
+    </form>
+    <div class="message" id="formMessage"></div>
+  </div>
+
+  <!-- 게시글 목록 -->
+  <h1 style="text-align:center;">게시글 목록</h1>
+  <div id="postsContainer">
+    <!-- 게시글들이 여기 표시됩니다. -->
   </div>
 
   <script>
-    document.getElementById('searchBtn').addEventListener('click', async () => {
-      const tag = document.getElementById('tagInput').value.trim().toUpperCase().replace('#', '');
-      const resultDiv = document.getElementById('result');
-      const errorDiv = document.getElementById('error');
-  
-      resultDiv.innerHTML = ''; // 초기화
-      errorDiv.textContent = '';
-  
-      if (!tag) {
-        errorDiv.textContent = '플레이어 태그를 입력해주세요!';
+    const API_URL = 'http://localhost:3000';
+
+    // 게시글 작성 폼 제출 처리
+    document.getElementById('postForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      
+      const title = document.getElementById('title').value;
+      const content = document.getElementById('content').value;
+      const tags = document.getElementById('tags').value;
+      const tokenInput = document.getElementById('token').value;
+      const token = tokenInput || localStorage.getItem('token');
+      
+      if (!token) {
+        document.getElementById('formMessage').textContent = "로그인 토큰이 없습니다. 로그인 후 시도하세요.";
         return;
       }
-  
+      
       try {
-        const res = await fetch(`http://localhost:3000/api/player/${tag}`);
-        if (!res.ok) {
-          const errorData = await res.json();
-          throw new Error(errorData.message || '플레이어를 찾을 수 없습니다.');
+        const response = await fetch(`${API_URL}/articles`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + token
+          },
+          body: JSON.stringify({ title, content, tags })
+        });
+        
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.error || '글 작성 실패');
         }
-  
-        const data = await res.json();
-  
-        // 📌 주요 정보 정리
-        const infoHtml = `
-          <h2>${data.name} <small>(#${data.tag})</small></h2>
-          <p><strong>🏆 트로피:</strong> ${data.trophies}</p>
-          <p><strong>🎯 레벨:</strong> ${data.expLevel}</p>
-          <p><strong>✅ 총 승리:</strong> ${data.wins}</p>
-          <p><strong>❌ 총 패배:</strong> ${data.losses}</p>
-          <p><strong>👑 3크라운 승리:</strong> ${data.threeCrownWins ?? '정보 없음'}</p>
-          <p><strong>🎖️ 클랜:</strong> ${data.clan ? `${data.clan.name} (#${data.clan.tag})` : '없음'}</p>
-          <p><strong>💖 좋아하는 카드:</strong> ${data.currentFavouriteCard ? data.currentFavouriteCard.name : '정보 없음'}</p>
-          <p><strong>📦 총 전투 수:</strong> ${data.battleCount}</p>
-          <hr/>
-          <h3>현재 덱:</h3>
-          <ul>
-            ${data.currentDeck?.map(card => `<li>${card.name} (레벨 ${card.level})</li>`).join('')}
-          </ul>
-        `;
-  
-        resultDiv.innerHTML = infoHtml;
-        resultDiv.classList.remove('hidden');
-  
+        
+        document.getElementById('formMessage').textContent = data.message + " (글 ID: " + data.articleId + ")";
+        document.getElementById('postForm').reset();
+        // 게시글 목록을 다시 불러와 최신 글 표시
+        fetchPosts();
       } catch (err) {
-        console.error('[❌ 오류 발생]', err);
-        errorDiv.textContent = err.message || '오류가 발생했습니다.';
+        document.getElementById('formMessage').textContent = "에러: " + err.message;
       }
     });
+
+    // 게시글 목록 불러오기 함수
+    async function fetchPosts() {
+      try {
+        const response = await fetch(`${API_URL}/articles`);
+        const posts = await response.json();
+        displayPosts(posts);
+      } catch (error) {
+        console.error('게시글 불러오기 실패:', error);
+      }
+    }
+
+    // 게시글들을 화면에 표시하는 함수
+    function displayPosts(posts) {
+  const container = document.getElementById('postsContainer');
+  container.innerHTML = '';
+
+  posts.forEach(post => {
+    const postElem = document.createElement('div');
+    postElem.className = 'post';
+
+    postElem.innerHTML = `
+      <h2>${post.title}</h2>
+      <div class="meta">
+        작성자: ${post.nickname ? post.nickname : '알 수 없음'} | 작성일: ${new Date(post.created_at).toLocaleString()} | 좋아요: ${post.likes || 0}
+      </div>
+      <p>${post.content}</p>
+
+      <!-- 댓글 목록 -->
+      <div id="comments-${post.id}" class="comments-section"></div>
+
+      <!-- 댓글 작성 폼 -->
+      <form class="comment-form" data-article-id="${post.id}">
+        <input type="text" placeholder="댓글을 입력하세요" class="comment-input" required />
+        <button type="submit">댓글 작성</button>
+        <div class="comment-message"></div>
+      </form>
+    `;
+
+    container.appendChild(postElem);
+
+    // 댓글 이벤트 등록 + 댓글 목록 불러오기
+    const commentForm = postElem.querySelector(`form[data-article-id="${post.id}"]`);
+    if (commentForm) {
+      commentForm.addEventListener('submit', handleCommentSubmit);
+    }
+    fetchComments(post.id);
+  });
+}
+
+    async function fetchComments(articleId) {
+      try {
+        const res = await fetch(`${API_URL}/articles/${articleId}/comments`);
+        const comments = await res.json();
+
+        const commentSection = document.getElementById(`comments-${articleId}`);
+        commentSection.innerHTML = `<strong>💬 댓글</strong><ul>${comments.map(c => `
+          <li>👤 ${c.content} (${c.created_at.split('T')[0]})</li>
+        `).join('')}</ul>`;
+      } catch (err) {
+        console.error('댓글 로딩 실패:', err);
+      }
+    }
+
+    async function handleCommentSubmit(e) {
+      e.preventDefault();
+
+      const form = e.target;
+      const articleId = form.dataset.articleId;
+      const input = form.querySelector('.comment-input');
+      const message = form.querySelector('.comment-message');
+      const token = localStorage.getItem('token');
+
+      if (!token) {
+        message.textContent = '로그인이 필요합니다.';
+        return;
+      }
+
+      try {
+        const res = await fetch(`${API_URL}/articles/${articleId}/comments`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + token
+          },
+          body: JSON.stringify({ content: input.value })
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        message.textContent = '✅ 댓글 작성 완료';
+        input.value = '';
+        fetchComments(articleId); // 댓글 새로고침
+      } catch (err) {
+        message.textContent = '❌ ' + err.message;
+      }
+    }
+
+    // 페이지 로드 시 게시글 목록 불러오기
+    document.addEventListener('DOMContentLoaded', fetchPosts);
   </script>
-  
 </body>
 </html>
