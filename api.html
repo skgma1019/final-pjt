@@ -62,40 +62,81 @@
 <body>
   <div class="container">
     <h1>Clash Royale 플레이어 조회</h1>
-    <input type="text" id="tagInput" placeholder="플레이어 태그 (예:    )" />
-    <button id="searchBtn">검색</button>
-    <div id="result" class="hidden">
-      <h2 id="playerName"></h2>
-      <p>🏆 트로피: <span id="trophies"></span></p>
-      <p>🎖️ 클랜: <span id="clan"></span></p>
+
+    <input type="text" id="tagInput" placeholder="플레이어 태그 (예: ABC123)" />
+
+    <div>
+      <button id="saveTagBtn">태그 저장</button>
+      <button id="searchBtn">검색</button>
     </div>
+
+    <div id="saveMessage" style="margin-top: 10px;"></div>
     <div id="error" class="error"></div>
+
+    <div id="result" class="hidden"></div>
   </div>
 
   <script>
+    const API_URL = 'http://localhost:3000';
+
+    // ▶ 태그 저장
+    document.getElementById('saveTagBtn').addEventListener('click', async () => {
+      const tag = document.getElementById('tagInput').value.trim().toUpperCase().replace('#', '');
+      const token = localStorage.getItem('token');
+      const saveMsg = document.getElementById('saveMessage');
+
+      if (!tag) {
+        saveMsg.textContent = '태그를 입력해주세요.';
+        return;
+      }
+
+      if (!token) {
+        alert('로그인이 필요합니다.');
+        return;
+      }
+
+      try {
+        const res = await fetch(`${API_URL}/me/tag`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + token
+          },
+          body: JSON.stringify({ tag })
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        saveMsg.textContent = '✅ 태그 저장 완료!';
+      } catch (err) {
+        saveMsg.textContent = '❌ 오류: ' + err.message;
+      }
+    });
+
+    // ▶ 플레이어 조회
     document.getElementById('searchBtn').addEventListener('click', async () => {
       const tag = document.getElementById('tagInput').value.trim().toUpperCase().replace('#', '');
       const resultDiv = document.getElementById('result');
       const errorDiv = document.getElementById('error');
-  
-      resultDiv.innerHTML = ''; // 초기화
+
+      resultDiv.innerHTML = '';
+      resultDiv.classList.add('hidden');
       errorDiv.textContent = '';
-  
+
       if (!tag) {
         errorDiv.textContent = '플레이어 태그를 입력해주세요!';
         return;
       }
-  
+
       try {
-        const res = await fetch(`http://localhost:3000/api/player/${tag}`);
+        const res = await fetch(`${API_URL}/api/player/${tag}`);
         if (!res.ok) {
           const errorData = await res.json();
           throw new Error(errorData.message || '플레이어를 찾을 수 없습니다.');
         }
-  
+
         const data = await res.json();
-  
-        // 📌 주요 정보 정리
         const infoHtml = `
           <h2>${data.name} <small>(#${data.tag})</small></h2>
           <p><strong>🏆 트로피:</strong> ${data.trophies}</p>
@@ -112,16 +153,22 @@
             ${data.currentDeck?.map(card => `<li>${card.name} (레벨 ${card.level})</li>`).join('')}
           </ul>
         `;
-  
+
         resultDiv.innerHTML = infoHtml;
         resultDiv.classList.remove('hidden');
-  
       } catch (err) {
-        console.error('[❌ 오류 발생]', err);
         errorDiv.textContent = err.message || '오류가 발생했습니다.';
+        console.error('[❌ 오류 발생]', err);
       }
+
+      const token = localStorage.getItem('token');
+
+if (!token) {
+  alert('로그인이 필요합니다.');
+  return;
+}
+
     });
   </script>
-  
 </body>
 </html>

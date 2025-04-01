@@ -104,7 +104,7 @@ router.post('/register', async (req, res) => {
 });
 
 
-// ✅ [3] 로그인
+// 로그인 라우터
 router.post('/login', (req, res) => {
   const db = new sqlite3.Database('./clash_community.db');
   const { email, password } = req.body;
@@ -120,7 +120,12 @@ router.post('/login', (req, res) => {
 
     const token = jwt.sign({ id: user.id, email: user.email }, SECRET, { expiresIn: '1h' });
 
-    res.json({ message: '로그인 성공', token });
+    res.json({
+      message: '로그인 성공',
+      token,
+      userId: user.id // ✅ 이거 꼭 있어야 한다!
+    });
+
     db.close();
   });
 });
@@ -132,5 +137,47 @@ router.get('/me', authenticateToken, (req, res) => {
     user: req.user, // { id, email } 형태
   });
 });
+
+// PATCH /me/tag - 로그인한 유저의 태그 업데이트
+router.patch('/me/tag', authenticateToken, (req, res) => {
+  const db = new sqlite3.Database('./clash_community.db');
+  const userId = req.user.id;
+  const { tag } = req.body;
+
+  if (!tag) return res.status(400).json({ error: '태그가 필요합니다.' });
+
+  const updateQuery = `UPDATE users_tag SET tag = ?, last_updated = CURRENT_TIMESTAMP WHERE user_id = ?`;
+
+  db.run(updateQuery, [tag, userId], function (err) {
+    if (err) {
+      console.error('❌ 태그 저장 오류:', err.message);
+      return res.status(500).json({ error: '태그 저장 실패' });
+    }
+
+    res.json({ message: '태그가 저장되었습니다.' });
+    db.close();
+  });
+});
+
+// GET /me/info - 회원 정보 조회용
+router.get('/me/info', authenticateToken, (req, res) => {
+  const db = new sqlite3.Database('./clash_community.db');
+  const userId = req.user.id;
+
+  const query = `
+    SELECT u.email, ut.nickname, ut.tag, ut.trophies, ut.clan_name, ut.arena, ut.last_updated
+    FROM users u
+    LEFT JOIN users_tag ut ON u.id = ut.user_id
+    WHERE u.id = ?
+  `;
+
+  db.get(query, [userId], (err, row) => {
+    if (err) return res.status(500).json({ error: '회원 정보 불러오기 실패' });
+    if (!row) return res.status(404).json({ error: '회원 정보를 찾을 수 없습니다.' });
+    res.json(row);
+    db.close();
+  });
+});
+
 
 export default router;

@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>내 정보</title>
+  <style>
+    body { font-family: sans-serif; padding: 30px; background: #f9f9f9; }
+    .container { max-width: 600px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+    h2 { text-align: center; }
+    .info-item { margin-bottom: 10px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>🙋 내 정보</h2>
+    <div id="userInfo">정보 불러오는 중...</div>
+  </div>
+
+  <script>
+    const API_URL = 'http://localhost:3000';
+
+    async function fetchUserInfo() {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        document.getElementById('userInfo').textContent = '로그인이 필요합니다.';
+        return;
+      }
+
+      try {
+        const res = await fetch(`${API_URL}/me/info`, {
+          headers: {
+            'Authorization': 'Bearer ' + token
+          }
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        document.getElementById('userInfo').innerHTML = `
+          <div class="info-item"><strong>📧 이메일:</strong> ${data.email}</div>
+          <div class="info-item"><strong>🎮 닉네임:</strong> ${data.nickname}</div>
+          <div class="info-item"><strong>#️⃣ 태그:</strong> ${data.tag}</div>
+          <div class="info-item"><strong>🏆 트로피:</strong> ${data.trophies ?? '정보 없음'}</div>
+          <div class="info-item"><strong>🎖️ 클랜:</strong> ${data.clan_name ?? '정보 없음'}</div>
+          <div class="info-item"><strong>🏟 아레나:</strong> ${data.arena ?? '정보 없음'}</div>
+          <div class="info-item"><small>⏱ 마지막 업데이트: ${data.last_updated}</small></div>
+        `;
+      } catch (err) {
+        document.getElementById('userInfo').textContent = '❌ 오류: ' + err.message;
+      }
+    }
+
+    fetchUserInfo();
+  </script>
+</body>
+</html>

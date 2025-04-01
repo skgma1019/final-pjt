@@ -1,73 +1,14 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <title>게시글 목록 & 글 작성</title>
+  <title>게시글 목록</title>
   <style>
     body {
       font-family: Arial, sans-serif;
       margin: 20px;
       background: #f4f4f4;
     }
-    /* 내비게이션 바 스타일 */
-    .nav-bar {
-      text-align: right;
-      margin-bottom: 20px;
-    }
-    .nav-bar a {
-      margin-left: 10px;
-      text-decoration: none;
-      color: #fff;
-      background: #007bff;
-      padding: 8px 12px;
-      border-radius: 4px;
-    }
-    .nav-bar a:hover {
-      background: #0056b3;
-    }
-    /* 글 작성 폼 스타일 */
-    .form-container {
-      max-width: 600px;
-      margin: 0 auto 30px;
-      background: #fff;
-      padding: 20px;
-      border-radius: 8px;
-      box-shadow: 0 0 8px rgba(0,0,0,0.1);
-    }
-    .form-container h2 {
-      margin-top: 0;
-    }
-    .form-container label {
-      display: block;
-      margin-bottom: 5px;
-      font-weight: bold;
-    }
-    .form-container input[type="text"],
-    .form-container textarea {
-      width: 100%;
-      padding: 8px;
-      margin-bottom: 15px;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      box-sizing: border-box;
-    }
-    .form-container button {
-      background: #007bff;
-      border: none;
-      color: #fff;
-      padding: 10px 15px;
-      border-radius: 4px;
-      cursor: pointer;
-    }
-    .form-container button:hover {
-      background: #0056b3;
-    }
-    .message {
-      text-align: center;
-      margin-top: 10px;
-      font-weight: bold;
-    }
-    /* 게시글 목록 스타일 */
     .post {
       background: #fff;
       border: 1px solid #ddd;
@@ -82,297 +23,51 @@
       color: #777;
       font-size: 0.9em;
       margin-bottom: 10px;
-      
     }
-    .comments-section ul {
-    list-style: none;
-    padding-left: 0;
-    margin-top: 10px;
-  }
-  .comments-section li {
-    background: #f2f2f2;
-    margin-bottom: 10px;
-    padding: 10px 12px;
-    border-radius: 6px;
-    position: relative;
-    font-size: 14px;
-    line-height: 1.5;
-  }
-  .comment-form {
-    margin-top: 10px;
-  }
-  .comment-form input {
-    padding: 5px;
-    width: 80%;
-    border-radius: 3px;
-    border: 1px solid #ccc;
-  }
-  .comment-form button {
-    padding: 5px 10px;
-    margin-left: 5px;
-  }
-  .comment-like-btn {
-    background-color: #fff !important;
-  border: 1px solid #ddd !important;
-  border-radius: 20px !important;
-  color: #e25555 !important;
-  font-weight: bold !important;
-  font-size: 13px !important;
-  padding: 4px 10px !important;
-  margin-top: 5px !important;
-  cursor: pointer !important;
-  transition: all 0.2s ease-in-out !important; 
-  }
-  .comment-like-btn:hover {
-    background-color: #ffeaea;
-  border-color: #ffb3b3;
-  }
-
-  .comment-like-btn:active {
-    transform: scale(0.95);
-    background-color: #ffcccc;
-  }
   </style>
 </head>
 <body>
-  <!-- 내비게이션 바 -->
-  <div class="nav-bar">
-    <a href="login.html">로그인</a>
-    <a href="register.html">회원가입</a>
-  </div>
-
-  <!-- 글 작성 폼 -->
-  <div class="form-container">
-    <h2>새 글 작성하기</h2>
-    <form id="postForm">
-      <label for="title">제목</label>
-      <input type="text" id="title" name="title" required>
-      
-      <label for="content">내용</label>
-      <textarea id="content" name="content" rows="10" required></textarea>
-      
-      <label for="tags">태그 (쉼표로 구분)</label>
-      <input type="text" id="tags" name="tags">
-      
-      <!-- 테스트용 JWT 토큰 입력, 실제 서비스에서는 localStorage 또는 쿠키를 사용 -->
-      <label for="token">JWT 토큰 (테스트용)</label>
-      <input type="text" id="token" name="token" placeholder="토큰 입력 (없으면 localStorage 사용)">
-      
-      <button type="submit">글 작성</button>
-    </form>
-    <div class="message" id="formMessage"></div>
-  </div>
-
-  <!-- 게시글 목록 -->
-  <h1 style="text-align:center;">게시글 목록</h1>
+  <h1 style="text-align:center;">📚 게시글 목록</h1>
   <div id="postsContainer">
-    <!-- 게시글들이 여기 표시됩니다. -->
+    <!-- 게시글 목록이 여기에 표시됩니다 -->
   </div>
 
   <script>
     const API_URL = 'http://localhost:3000';
-  
-    // 게시글 작성 폼 제출 처리
-    document.getElementById('postForm').addEventListener('submit', async function(e) {
-      e.preventDefault();
-  
-      const title = document.getElementById('title').value;
-      const content = document.getElementById('content').value;
-      const tags = document.getElementById('tags').value;
-      const tokenInput = document.getElementById('token').value;
-      const token = tokenInput || localStorage.getItem('token');
-  
-      if (!token) {
-        document.getElementById('formMessage').textContent = "로그인 토큰이 없습니다. 로그인 후 시도하세요.";
-        return;
-      }
-  
-      try {
-        const response = await fetch(`${API_URL}/articles`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer ' + token
-          },
-          body: JSON.stringify({ title, content, tags })
-        });
-  
-        const data = await response.json();
-        if (!response.ok) {
-          throw new Error(data.error || '글 작성 실패');
-        }
-  
-        document.getElementById('formMessage').textContent = data.message + " (글 ID: " + data.articleId + ")";
-        document.getElementById('postForm').reset();
-        fetchPosts();
-      } catch (err) {
-        document.getElementById('formMessage').textContent = "에러: " + err.message;
-      }
-    });
-  
-    // 게시글 목록 불러오기
-    async function fetchPosts() {
-      try {
-        const response = await fetch(`${API_URL}/articles`);
-        const posts = await response.json();
-        displayPosts(posts);
-      } catch (error) {
-        console.error('게시글 불러오기 실패:', error);
-      }
-    }
-  
-    // 게시글 렌더링
-    function displayPosts(posts) {
-      const container = document.getElementById('postsContainer');
-      container.innerHTML = '';
-  
-      posts.forEach(post => {
-        const postElem = document.createElement('div');
-        postElem.className = 'post';
-  
-        postElem.innerHTML = `
-          <h2>${post.title}</h2>
-          <div class="meta">
-            작성자: ${post.nickname ? post.nickname : '알 수 없음'} | 작성일: ${new Date(post.created_at).toLocaleString()} | 좋아요: ${post.likes || 0}
-          </div>
-          <p>${post.content}</p>
-  
-          <!-- 댓글 목록 -->
-          <div id="comments-${post.id}" class="comments-section"></div>
-  
-          <!-- 댓글 작성 폼 -->
-          <form class="comment-form" data-article-id="${post.id}">
-            <input type="text" placeholder="댓글을 입력하세요" class="comment-input" required />
-            <button type="submit">댓글 작성</button>
-            <div class="comment-message"></div>
-          </form>
-  
-          <!-- 좋아요 버튼 -->
-          <button class="like-btn" data-article-id="${post.id}">❤️ 좋아요 (${post.likes || 0})</button>
-        `;
-  
-        container.appendChild(postElem);
-  
-        const commentForm = postElem.querySelector(`form[data-article-id="${post.id}"]`);
-        if (commentForm) {
-          commentForm.addEventListener('submit', handleCommentSubmit);
-        }
-  
-        fetchComments(post.id);
-      });
-    }
-  
-    // 댓글 목록 불러오기
-    async function fetchComments(articleId) {
-  try {
-    const res = await fetch(`${API_URL}/articles/${articleId}/comments`);
-    const comments = await res.json();
 
-    const commentSection = document.getElementById(`comments-${articleId}`);
-    commentSection.innerHTML = `<strong>💬 댓글</strong><ul>${comments.map(c => `
-      <li>
-        👤 ${c.nickname ? c.nickname : '알 수 없음'}: ${c.content} (${c.created_at.split('T')[0]})<br />
-        <button class="comment-like-btn" data-comment-id="${c.id}">❤️ ${c.likes || 0}</button>
-      </li>
-    `).join('')}</ul>`;
-  } catch (err) {
-    console.error('댓글 로딩 실패:', err);
-  }
-}
-
-  
-    // 댓글 작성 처리
-    async function handleCommentSubmit(e) {
-      e.preventDefault();
-  
-      const form = e.target;
-      const articleId = form.dataset.articleId;
-      const input = form.querySelector('.comment-input');
-      const message = form.querySelector('.comment-message');
-      const token = localStorage.getItem('token');
-  
-      if (!token) {
-        message.textContent = '로그인이 필요합니다.';
-        return;
-      }
-  
-      try {
-        const res = await fetch(`${API_URL}/articles/${articleId}/comments`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer ' + token
-          },
-          body: JSON.stringify({ content: input.value })
-        });
-  
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error);
-  
-        message.textContent = '✅ 댓글 작성 완료';
-        input.value = '';
-        fetchComments(articleId);
-      } catch (err) {
-        message.textContent = '❌ ' + err.message;
-      }
-    }
-  
-    // ✅ 좋아요 버튼 클릭 처리 (중복 제거됨)
-    document.addEventListener('click', async function(e) {
-      if (e.target.classList.contains('like-btn')) {
-        const articleId = e.target.dataset.articleId;
-        const token = localStorage.getItem('token');
-        if (!token) {
-          alert('로그인이 필요합니다!');
-          return;
-        }
-  
+    document.addEventListener('DOMContentLoaded', () => {
+      async function fetchPosts() {
         try {
-          const res = await fetch(`${API_URL}/articles/${articleId}/like`, {
-            method: 'POST',
-            headers: {
-              'Authorization': 'Bearer ' + token
-            }
-          });
-  
-          const data = await res.json();
-          if (!res.ok) throw new Error(data.error);
-  
-          alert(data.message); // 좋아요 추가 or 취소 결과 메시지
-          fetchPosts(); // 좋아요 수 반영 위해 다시 불러오기
-        } catch (err) {
-          alert('❌ ' + err.message);
+          const response = await fetch(`${API_URL}/articles`);
+          const posts = await response.json();
+          displayPosts(posts);
+        } catch (error) {
+          console.error('게시글 불러오기 실패:', error);
         }
       }
+
+      function displayPosts(posts) {
+        const container = document.getElementById('postsContainer');
+        container.innerHTML = '';
+
+        posts.forEach(post => {
+          const postElem = document.createElement('div');
+          postElem.className = 'post';
+
+          postElem.innerHTML = `
+            <h2><a href="comment.html?articleId=${post.id}">${post.title}</a></h2>
+            <div class="meta">
+              작성자: ${post.nickname ?? '알 수 없음'} | 작성일: ${new Date(post.created_at).toLocaleString()} | 좋아요: ${post.likes || 0}
+            </div>
+            <p>${post.content}</p>
+          `;
+
+          container.appendChild(postElem);
+        });
+      }
+
+      fetchPosts();
     });
-  
-    document.addEventListener('click', async function(e) {
-  if (e.target.classList.contains('comment-like-btn')) {
-    const commentId = e.target.dataset.commentId;
-    const token = localStorage.getItem('token');
-    if (!token) return alert('로그인이 필요합니다!');
-
-    try {
-      const res = await fetch(`${API_URL}/comments/${commentId}/like`, {
-        method: 'POST',
-        headers: {
-          'Authorization': 'Bearer ' + token
-        }
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-
-      alert(data.message);
-      fetchPosts(); // 좋아요 수 반영을 위해 전체 다시 불러오기
-    } catch (err) {
-      alert('❌ ' + err.message);
-    }
-  }
-});
-
-    // 초기 로딩
-    document.addEventListener('DOMContentLoaded', fetchPosts);
   </script>
-  
 </body>
 </html>

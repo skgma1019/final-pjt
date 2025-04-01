@@ -46,7 +46,6 @@
       margin-top: 10px;
       font-weight: bold;
     }
-    
   </style>
 </head>
 <body>
@@ -63,39 +62,38 @@
     </form>
     <div class="message" id="loginMessage"></div>
   </div>
-  <div style="text-align: center; margin-top: 20px;">
-    <a href="index.html" style="text-decoration: none;">
-      <button style="padding: 8px 16px; border: none; background: #6c757d; color: white; border-radius: 4px; cursor: pointer;">
-        ⬅ 홈으로 돌아가기
-      </button>
-    </a>
-  </div>
+
   <script>
     const API_URL = 'http://localhost:3000';
-    
+
     document.getElementById('loginForm').addEventListener('submit', async function(e) {
       e.preventDefault();
       
       const email = document.getElementById('loginEmail').value;
       const password = document.getElementById('loginPassword').value;
-      
+
       try {
         const response = await fetch(`${API_URL}/login`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email, password })
         });
-        
+
         const data = await response.json();
+        console.log('[✅ 로그인 응답]', data);
+
         if (!response.ok) {
           throw new Error(data.error || '로그인 실패');
         }
-        
-        // 로그인 성공 시 토큰을 localStorage에 저장
+
+        // ✅ localStorage에 token과 user_id 저장
         localStorage.setItem('token', data.token);
-        document.getElementById('loginMessage').textContent = "로그인 성공! 토큰이 저장되었습니다.";
+        localStorage.setItem('user_id', data.userId.toString());
+
+        document.getElementById('loginMessage').textContent = "로그인 성공! 토큰과 user_id 저장됨 ✅";
       } catch (err) {
         document.getElementById('loginMessage').textContent = "에러: " + err.message;
+        console.error('로그인 에러:', err);
       }
     });
   </script>

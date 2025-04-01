@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>댓글 보기</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      background: #f4f4f4;
+    }
+    .post {
+      background: #fff;
+      border: 1px solid #ddd;
+      padding: 15px;
+      margin-bottom: 20px;
+      border-radius: 5px;
+    }
+    .post h2 {
+      margin: 0 0 10px;
+    }
+    .post .meta {
+      color: #777;
+      font-size: 0.9em;
+      margin-bottom: 10px;
+    }
+    .comment-section {
+      background: #fff;
+      border: 1px solid #ddd;
+      padding: 10px;
+      margin-top: 20px;
+    }
+    .comment-section ul {
+      list-style: none;
+      padding-left: 0;
+    }
+    .comment-section li {
+      background: #f2f2f2;
+      margin-bottom: 10px;
+      padding: 10px;
+      border-radius: 6px;
+    }
+    .back-btn {
+      background: #6c757d;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-top: 20px;
+    }
+    .back-btn:hover {
+      background: #5a6268;
+    }
+    .comment-form {
+      margin-top: 20px;
+    }
+    .comment-form input {
+      width: 80%;
+      padding: 8px;
+      margin-right: 5px;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+    }
+    .comment-form button {
+      padding: 8px 12px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .comment-form button:hover {
+      background-color: #0056b3;
+    }
+  </style>
+</head>
+<body>
+  <h1 style="text-align:center;">📜 댓글 보기</h1>
+
+  <div id="postContainer"></div>
+  <div class="comment-section">
+    <h3>💬 댓글</h3>
+    <ul id="commentsContainer">
+      <!-- 댓글들이 여기에 표시됩니다 -->
+    </ul>
+  </div>
+
+  <div class="comment-form">
+    <h3>댓글 작성</h3>
+    <input type="text" id="commentInput" placeholder="댓글을 입력하세요" required />
+    <button id="submitComment">댓글 작성</button>
+  </div>
+
+  <button class="back-btn" onclick="window.location.href='index.html';">⬅ 게시글 목록으로 돌아가기</button>
+
+  <script>
+    const API_URL = 'http://localhost:3000';
+    const params = new URLSearchParams(window.location.search);
+    const articleId = params.get('articleId');
+    const token = localStorage.getItem('token');
+
+    document.addEventListener('DOMContentLoaded', () => {
+      async function fetchPost() {
+        try {
+          const response = await fetch(`${API_URL}/articles/${articleId}`);
+          const post = await response.json();
+          displayPost(post);
+        } catch (error) {
+          console.error('게시글 불러오기 실패:', error);
+        }
+      }
+
+      async function fetchComments() {
+        try {
+          const response = await fetch(`${API_URL}/articles/${articleId}/comments`);
+          const comments = await response.json();
+          displayComments(comments);
+        } catch (error) {
+          console.error('댓글 불러오기 실패:', error);
+        }
+      }
+
+      async function submitComment() {
+        const commentContent = document.getElementById('commentInput').value;
+
+        if (!commentContent) {
+          alert('댓글을 입력하세요!');
+          return;
+        }
+
+        if (!token) {
+          alert('로그인이 필요합니다!');
+          return;
+        }
+
+        try {
+          const res = await fetch(`${API_URL}/articles/${articleId}/comments`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer ' + token
+            },
+            body: JSON.stringify({ content: commentContent })
+          });
+
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error);
+
+          alert('✅ 댓글이 작성되었습니다!');
+          fetchComments(); // 댓글 목록 새로 고침
+          document.getElementById('commentInput').value = ''; // 댓글 입력창 비우기
+        } catch (error) {
+          console.error('댓글 작성 실패:', error);
+          alert('❌ 댓글 작성 실패: ' + error.message);
+        }
+      }
+
+      function displayPost(post) {
+        const container = document.getElementById('postContainer');
+        container.innerHTML = `
+          <div class="post">
+            <h2>${post.title}</h2>
+            <div class="meta">
+              작성자: ${post.nickname ?? '알 수 없음'} | 작성일: ${new Date(post.created_at).toLocaleString()} | 좋아요: ${post.likes || 0}
+            </div>
+            <p>${post.content}</p>
+          </div>
+        `;
+      }
+
+      function displayComments(comments) {
+        const container = document.getElementById('commentsContainer');
+        container.innerHTML = '';
+
+        comments.forEach(comment => {
+          const commentElem = document.createElement('li');
+          commentElem.innerHTML = `
+            👤 ${comment.nickname ?? '알 수 없음'}: ${comment.content} (${new Date(comment.created_at).toLocaleString()})
+          `;
+          container.appendChild(commentElem);
+        });
+      }
+
+      // 댓글 작성 버튼 클릭 시
+      document.getElementById('submitComment').addEventListener('click', submitComment);
+
+      fetchPost();
+      fetchComments();
+    });
+  </script>
+</body>
+</html>

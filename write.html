@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>글 작성 / 수정</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      background: #f4f4f4;
+    }
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      background: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 0 8px rgba(0,0,0,0.1);
+    }
+    h2 {
+      text-align: center;
+    }
+    label {
+      display: block;
+      margin-top: 10px;
+      font-weight: bold;
+    }
+    input, textarea {
+      width: 100%;
+      padding: 8px;
+      margin-top: 5px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    button {
+      background: #007bff;
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-top: 15px;
+    }
+    button:hover {
+      background: #0056b3;
+    }
+  </style>
+</head>
+<body>
+  <div id="nav"></div>
+
+  <div class="container">
+    <h2 id="formTitle">📝 글 작성하기</h2>
+    <form id="postForm">
+      <label for="title">제목</label>
+      <input type="text" id="title" name="title" required>
+
+      <label for="content">내용</label>
+      <textarea id="content" name="content" rows="8" required></textarea>
+
+      <label for="tags">태그 (쉼표로 구분)</label>
+      <input type="text" id="tags" name="tags">
+
+      <button type="submit" id="submitBtn">작성 완료</button>
+    </form>
+  </div>
+
+  <!-- 작성 완료 후 돌아가기 버튼 (처음엔 안 보임) -->
+  <div id="backBtnContainer" style="text-align:center; margin-top:20px; display:none;">
+    <button onclick="location.href='index.html'" style="padding: 8px 16px; border: none; background: #6c757d; color: white; border-radius: 4px; cursor: pointer;">
+      ⬅ 게시글 목록으로 돌아가기
+    </button>
+  </div>
+
+  <script src="nav.js"></script>
+  <script>
+    const API_URL = 'http://localhost:3000';
+    const params = new URLSearchParams(window.location.search);
+    const editId = params.get('editId');
+    const token = localStorage.getItem('token');
+
+    async function loadArticleForEdit(id) {
+      try {
+        const res = await fetch(`${API_URL}/articles/${id}`);
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        document.getElementById('title').value = data.title;
+        document.getElementById('content').value = data.content;
+        document.getElementById('tags').value = data.tags || '';
+
+        document.getElementById('formTitle').textContent = '✏️ 글 수정하기';
+        document.getElementById('submitBtn').textContent = '수정 완료';
+      } catch (err) {
+        alert('❌ 게시글 불러오기 실패: ' + err.message);
+        window.location.href = 'index.html';
+      }
+    }
+
+    document.getElementById('postForm').addEventListener('submit', async function (e) {
+      e.preventDefault();
+
+      if (!token) {
+        alert('❌ 로그인이 필요합니다.');
+        return;
+      }
+
+      const title = document.getElementById('title').value;
+      const content = document.getElementById('content').value;
+      const tags = document.getElementById('tags').value;
+
+      const url = editId
+        ? `${API_URL}/articles/${editId}`
+        : `${API_URL}/articles`;
+
+      const method = editId ? 'PUT' : 'POST';
+
+      try {
+        const res = await fetch(url, {
+          method,
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + token
+          },
+          body: JSON.stringify({ title, content, tags })
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        alert(editId ? '✏️ 게시글이 수정되었습니다!' : '✅ 게시글이 작성되었습니다!');
+        document.getElementById('backBtnContainer').style.display = 'block';
+
+      } catch (err) {
+        alert('❌ 에러: ' + err.message);
+      }
+    });
+
+    if (editId) {
+      loadArticleForEdit(editId);
+    }
+  </script>
+</body>
+</html>
