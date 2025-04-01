@@ -91,9 +91,12 @@
   }
   .comments-section li {
     background: #f2f2f2;
-    margin-bottom: 5px;
-    padding: 5px 10px;
-    border-radius: 4px;
+    margin-bottom: 10px;
+    padding: 10px 12px;
+    border-radius: 6px;
+    position: relative;
+    font-size: 14px;
+    line-height: 1.5;
   }
   .comment-form {
     margin-top: 10px;
@@ -107,6 +110,27 @@
   .comment-form button {
     padding: 5px 10px;
     margin-left: 5px;
+  }
+  .comment-like-btn {
+    background-color: #fff !important;
+  border: 1px solid #ddd !important;
+  border-radius: 20px !important;
+  color: #e25555 !important;
+  font-weight: bold !important;
+  font-size: 13px !important;
+  padding: 4px 10px !important;
+  margin-top: 5px !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease-in-out !important; 
+  }
+  .comment-like-btn:hover {
+    background-color: #ffeaea;
+  border-color: #ffb3b3;
+  }
+
+  .comment-like-btn:active {
+    transform: scale(0.95);
+    background-color: #ffcccc;
   }
   </style>
 </head>
@@ -147,22 +171,22 @@
 
   <script>
     const API_URL = 'http://localhost:3000';
-
+  
     // 게시글 작성 폼 제출 처리
     document.getElementById('postForm').addEventListener('submit', async function(e) {
       e.preventDefault();
-      
+  
       const title = document.getElementById('title').value;
       const content = document.getElementById('content').value;
       const tags = document.getElementById('tags').value;
       const tokenInput = document.getElementById('token').value;
       const token = tokenInput || localStorage.getItem('token');
-      
+  
       if (!token) {
         document.getElementById('formMessage').textContent = "로그인 토큰이 없습니다. 로그인 후 시도하세요.";
         return;
       }
-      
+  
       try {
         const response = await fetch(`${API_URL}/articles`, {
           method: 'POST',
@@ -172,22 +196,21 @@
           },
           body: JSON.stringify({ title, content, tags })
         });
-        
+  
         const data = await response.json();
         if (!response.ok) {
           throw new Error(data.error || '글 작성 실패');
         }
-        
+  
         document.getElementById('formMessage').textContent = data.message + " (글 ID: " + data.articleId + ")";
         document.getElementById('postForm').reset();
-        // 게시글 목록을 다시 불러와 최신 글 표시
         fetchPosts();
       } catch (err) {
         document.getElementById('formMessage').textContent = "에러: " + err.message;
       }
     });
-
-    // 게시글 목록 불러오기 함수
+  
+    // 게시글 목록 불러오기
     async function fetchPosts() {
       try {
         const response = await fetch(`${API_URL}/articles`);
@@ -197,73 +220,82 @@
         console.error('게시글 불러오기 실패:', error);
       }
     }
-
-    // 게시글들을 화면에 표시하는 함수
+  
+    // 게시글 렌더링
     function displayPosts(posts) {
-  const container = document.getElementById('postsContainer');
-  container.innerHTML = '';
-
-  posts.forEach(post => {
-    const postElem = document.createElement('div');
-    postElem.className = 'post';
-
-    postElem.innerHTML = `
-      <h2>${post.title}</h2>
-      <div class="meta">
-        작성자: ${post.nickname ? post.nickname : '알 수 없음'} | 작성일: ${new Date(post.created_at).toLocaleString()} | 좋아요: ${post.likes || 0}
-      </div>
-      <p>${post.content}</p>
-
-      <!-- 댓글 목록 -->
-      <div id="comments-${post.id}" class="comments-section"></div>
-
-      <!-- 댓글 작성 폼 -->
-      <form class="comment-form" data-article-id="${post.id}">
-        <input type="text" placeholder="댓글을 입력하세요" class="comment-input" required />
-        <button type="submit">댓글 작성</button>
-        <div class="comment-message"></div>
-      </form>
-    `;
-
-    container.appendChild(postElem);
-
-    // 댓글 이벤트 등록 + 댓글 목록 불러오기
-    const commentForm = postElem.querySelector(`form[data-article-id="${post.id}"]`);
-    if (commentForm) {
-      commentForm.addEventListener('submit', handleCommentSubmit);
+      const container = document.getElementById('postsContainer');
+      container.innerHTML = '';
+  
+      posts.forEach(post => {
+        const postElem = document.createElement('div');
+        postElem.className = 'post';
+  
+        postElem.innerHTML = `
+          <h2>${post.title}</h2>
+          <div class="meta">
+            작성자: ${post.nickname ? post.nickname : '알 수 없음'} | 작성일: ${new Date(post.created_at).toLocaleString()} | 좋아요: ${post.likes || 0}
+          </div>
+          <p>${post.content}</p>
+  
+          <!-- 댓글 목록 -->
+          <div id="comments-${post.id}" class="comments-section"></div>
+  
+          <!-- 댓글 작성 폼 -->
+          <form class="comment-form" data-article-id="${post.id}">
+            <input type="text" placeholder="댓글을 입력하세요" class="comment-input" required />
+            <button type="submit">댓글 작성</button>
+            <div class="comment-message"></div>
+          </form>
+  
+          <!-- 좋아요 버튼 -->
+          <button class="like-btn" data-article-id="${post.id}">❤️ 좋아요 (${post.likes || 0})</button>
+        `;
+  
+        container.appendChild(postElem);
+  
+        const commentForm = postElem.querySelector(`form[data-article-id="${post.id}"]`);
+        if (commentForm) {
+          commentForm.addEventListener('submit', handleCommentSubmit);
+        }
+  
+        fetchComments(post.id);
+      });
     }
-    fetchComments(post.id);
-  });
+  
+    // 댓글 목록 불러오기
+    async function fetchComments(articleId) {
+  try {
+    const res = await fetch(`${API_URL}/articles/${articleId}/comments`);
+    const comments = await res.json();
+
+    const commentSection = document.getElementById(`comments-${articleId}`);
+    commentSection.innerHTML = `<strong>💬 댓글</strong><ul>${comments.map(c => `
+      <li>
+        👤 ${c.nickname ? c.nickname : '알 수 없음'}: ${c.content} (${c.created_at.split('T')[0]})<br />
+        <button class="comment-like-btn" data-comment-id="${c.id}">❤️ ${c.likes || 0}</button>
+      </li>
+    `).join('')}</ul>`;
+  } catch (err) {
+    console.error('댓글 로딩 실패:', err);
+  }
 }
 
-    async function fetchComments(articleId) {
-      try {
-        const res = await fetch(`${API_URL}/articles/${articleId}/comments`);
-        const comments = await res.json();
-
-        const commentSection = document.getElementById(`comments-${articleId}`);
-        commentSection.innerHTML = `<strong>💬 댓글</strong><ul>${comments.map(c => `
-          <li>👤 ${c.content} (${c.created_at.split('T')[0]})</li>
-        `).join('')}</ul>`;
-      } catch (err) {
-        console.error('댓글 로딩 실패:', err);
-      }
-    }
-
+  
+    // 댓글 작성 처리
     async function handleCommentSubmit(e) {
       e.preventDefault();
-
+  
       const form = e.target;
       const articleId = form.dataset.articleId;
       const input = form.querySelector('.comment-input');
       const message = form.querySelector('.comment-message');
       const token = localStorage.getItem('token');
-
+  
       if (!token) {
         message.textContent = '로그인이 필요합니다.';
         return;
       }
-
+  
       try {
         const res = await fetch(`${API_URL}/articles/${articleId}/comments`, {
           method: 'POST',
@@ -273,20 +305,74 @@
           },
           body: JSON.stringify({ content: input.value })
         });
-
+  
         const data = await res.json();
         if (!res.ok) throw new Error(data.error);
-
+  
         message.textContent = '✅ 댓글 작성 완료';
         input.value = '';
-        fetchComments(articleId); // 댓글 새로고침
+        fetchComments(articleId);
       } catch (err) {
         message.textContent = '❌ ' + err.message;
       }
     }
+  
+    // ✅ 좋아요 버튼 클릭 처리 (중복 제거됨)
+    document.addEventListener('click', async function(e) {
+      if (e.target.classList.contains('like-btn')) {
+        const articleId = e.target.dataset.articleId;
+        const token = localStorage.getItem('token');
+        if (!token) {
+          alert('로그인이 필요합니다!');
+          return;
+        }
+  
+        try {
+          const res = await fetch(`${API_URL}/articles/${articleId}/like`, {
+            method: 'POST',
+            headers: {
+              'Authorization': 'Bearer ' + token
+            }
+          });
+  
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error);
+  
+          alert(data.message); // 좋아요 추가 or 취소 결과 메시지
+          fetchPosts(); // 좋아요 수 반영 위해 다시 불러오기
+        } catch (err) {
+          alert('❌ ' + err.message);
+        }
+      }
+    });
+  
+    document.addEventListener('click', async function(e) {
+  if (e.target.classList.contains('comment-like-btn')) {
+    const commentId = e.target.dataset.commentId;
+    const token = localStorage.getItem('token');
+    if (!token) return alert('로그인이 필요합니다!');
 
-    // 페이지 로드 시 게시글 목록 불러오기
+    try {
+      const res = await fetch(`${API_URL}/comments/${commentId}/like`, {
+        method: 'POST',
+        headers: {
+          'Authorization': 'Bearer ' + token
+        }
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+
+      alert(data.message);
+      fetchPosts(); // 좋아요 수 반영을 위해 전체 다시 불러오기
+    } catch (err) {
+      alert('❌ ' + err.message);
+    }
+  }
+});
+
+    // 초기 로딩
     document.addEventListener('DOMContentLoaded', fetchPosts);
   </script>
+  
 </body>
 </html>

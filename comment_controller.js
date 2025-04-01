@@ -47,12 +47,14 @@ router.get('/articles/:id/comments', (req, res) => {
   const articleId = req.params.id;
 
   const query = `
-    SELECT comments.id, comments.user_id, users.email, comments.content, comments.created_at
-    FROM comments
-    JOIN users ON comments.user_id = users.id
-    WHERE comments.article_id = ?
-    ORDER BY comments.created_at DESC
-  `;
+  SELECT c.id, c.user_id, c.content, c.created_at, u.nickname,
+         (SELECT COUNT(*) FROM comment_likes WHERE comment_id = c.id) AS likes
+  FROM comments c
+  LEFT JOIN users_tag u ON c.user_id = u.user_id
+  WHERE c.article_id = ?
+  ORDER BY c.created_at DESC
+`;
+
 
   db.all(query, [articleId], (err, rows) => {
     if (err) {
@@ -129,5 +131,33 @@ router.patch('/comments/:id', authenticateToken, (req, res) => {
       res.json({ message: '댓글이 수정되었습니다.', updatedId: commentId });
       db.close();
     });
+  });
+});
+
+// POST /comments/:id/like - 댓글 좋아요 토글
+router.post('/comments/:id/like', authenticateToken, (req, res) => {
+  const db = new sqlite3.Database('./clash_community.db');
+  const commentId = req.params.id;
+  const userId = req.user.id;
+
+  const checkQuery = `SELECT * FROM comment_likes WHERE comment_id = ? AND user_id = ?`;
+  db.get(checkQuery, [commentId, userId], (err, row) => {
+    if (err) return res.status(500).json({ error: '조회 실패' });
+
+    if (row) {
+      // 좋아요 취소
+      db.run(`DELETE FROM comment_likes WHERE comment_id = ? AND user_id = ?`, [commentId, userId], function (err) {
+        if (err) return res.status(500).json({ error: '취소 실패' });
+        res.json({ message: '댓글 좋아요 취소됨' });
+        db.close();
+      });
+    } else {
+      // 좋아요 추가
+      db.run(`INSERT INTO comment_likes (comment_id, user_id) VALUES (?, ?)`, [commentId, userId], function (err) {
+        if (err) return res.status(500).json({ error: '추가 실패' });
+        res.json({ message: '댓글 좋아요 추가됨' });
+        db.close();
+      });
+    }
   });
 });

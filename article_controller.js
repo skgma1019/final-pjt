@@ -239,8 +239,47 @@ router.get('/my-articles', authenticateToken, (req, res) => {
   });
 });
 
+// POST /articles/:id/like - 좋아요 토글
+router.post('/articles/:id/like', authenticateToken, (req, res) => {
+  const db = new sqlite3.Database('./clash_community.db');
+  const articleId = req.params.id;
+  const userId = req.user.id;
 
+  const checkQuery = `SELECT * FROM likes WHERE user_id = ? AND article_id = ?`;
+  db.get(checkQuery, [userId, articleId], (err, row) => {
+    if (err) return res.status(500).json({ error: '좋아요 상태 조회 실패' });
 
+    if (row) {
+      // 👉 이미 좋아요 했으면 삭제 (좋아요 취소)
+      const deleteQuery = `DELETE FROM likes WHERE user_id = ? AND article_id = ?`;
+      db.run(deleteQuery, [userId, articleId], function (err) {
+        if (err) return res.status(500).json({ error: '좋아요 취소 실패' });
+
+        const updateQuery = `UPDATE articles SET likes = likes - 1 WHERE id = ? AND likes > 0`;
+        db.run(updateQuery, [articleId], function (err) {
+          if (err) return res.status(500).json({ error: '좋아요 수 감소 실패' });
+
+          res.json({ message: '좋아요 취소됨' });
+          db.close();
+        });
+      });
+    } else {
+      // 👉 좋아요 추가
+      const insertQuery = `INSERT INTO likes (user_id, article_id) VALUES (?, ?)`;
+      db.run(insertQuery, [userId, articleId], function (err) {
+        if (err) return res.status(500).json({ error: '좋아요 추가 실패' });
+
+        const updateQuery = `UPDATE articles SET likes = likes + 1 WHERE id = ?`;
+        db.run(updateQuery, [articleId], function (err) {
+          if (err) return res.status(500).json({ error: '좋아요 수 증가 실패' });
+
+          res.json({ message: '좋아요 추가됨' });
+          db.close();
+        });
+      });
+    }
+  });
+});
 
 
 

@@ -68,7 +68,38 @@ db.serialize(() => {
     if (err) console.error('❌ comments 테이블 생성 오류:', err.message);
     else console.log('✅ comments 테이블 생성 완료');
   });
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS likes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      article_id INTEGER NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(user_id, article_id),
+      FOREIGN KEY (user_id) REFERENCES users(id),
+      FOREIGN KEY (article_id) REFERENCES articles(id)
+  );
+  `,(err) => {
+    if (err) console.error('❌ comments 테이블 생성 오류:', err.message);
+    else console.log('✅ comments 테이블 생성 완료');
+  });
 });
+
+db.run(`
+  CREATE TABLE IF NOT EXISTS comment_likes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    comment_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(comment_id, user_id),
+    FOREIGN KEY (comment_id) REFERENCES comments(id),
+    FOREIGN KEY (user_id) REFERENCES users(id)
+  );
+`, (err) => {
+  if (err) console.error('❌ comment_likes 테이블 생성 오류:', err.message);
+  else console.log('✅ comment_likes 테이블 생성 완료');
+});
+
 
 // ✅ 이건 serialize 블록 바깥에 있어도 괜찮음 (다 끝나고 나서 닫기)
 db.close();
