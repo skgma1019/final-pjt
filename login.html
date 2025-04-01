@@ -49,6 +49,8 @@
   </style>
 </head>
 <body>
+  <div id="nav"></div> <!-- nav.js 로 내비게이션 바 추가 -->
+
   <div class="form-container">
     <h2>로그인</h2>
     <form id="loginForm">
@@ -63,6 +65,15 @@
     <div class="message" id="loginMessage"></div>
   </div>
 
+  <div style="text-align: center; margin-top: 20px;">
+    <a href="index.html" style="text-decoration: none;">
+      <button style="padding: 8px 16px; border: none; background: #6c757d; color: white; border-radius: 4px; cursor: pointer;">
+        ⬅ 홈으로 돌아가기
+      </button>
+    </a>
+  </div>
+
+  <script src="nav.js"></script> <!-- nav.js 스크립트 추가 -->
   <script>
     const API_URL = 'http://localhost:3000';
 

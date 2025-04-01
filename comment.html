@@ -73,12 +73,27 @@
     .comment-form button:hover {
       background-color: #0056b3;
     }
+    .comment-like-btn {
+      background: #f1f1f1;
+      border: 1px solid #ddd;
+      color: #007bff;
+      padding: 5px;
+      border-radius: 20px;
+      cursor: pointer;
+    }
+    .comment-like-btn:hover {
+      background: #d1e7ff;
+    }
   </style>
 </head>
 <body>
+  <!-- 내비게이션 바 -->
+  <div id="nav"></div>
+
   <h1 style="text-align:center;">📜 댓글 보기</h1>
 
   <div id="postContainer"></div>
+
   <div class="comment-section">
     <h3>💬 댓글</h3>
     <ul id="commentsContainer">
@@ -94,6 +109,8 @@
 
   <button class="back-btn" onclick="window.location.href='index.html';">⬅ 게시글 목록으로 돌아가기</button>
 
+  <!-- nav.js 스크립트 포함 -->
+  <script src="nav.js"></script>
   <script>
     const API_URL = 'http://localhost:3000';
     const params = new URLSearchParams(window.location.search);
@@ -176,7 +193,10 @@
         comments.forEach(comment => {
           const commentElem = document.createElement('li');
           commentElem.innerHTML = `
-            👤 ${comment.nickname ?? '알 수 없음'}: ${comment.content} (${new Date(comment.created_at).toLocaleString()})
+            <strong>${comment.nickname ?? '알 수 없음'}:</strong> ${comment.content} <br/>
+            <small>${new Date(comment.created_at).toLocaleString()}</small>
+            <button class="comment-like-btn" data-comment-id="${comment.id}">❤️ 좋아요 (${comment.likes || 0})</button>
+            <button class="comment-delete-btn" data-comment-id="${comment.id}">🗑 삭제</button>
           `;
           container.appendChild(commentElem);
         });
@@ -184,6 +204,48 @@
 
       // 댓글 작성 버튼 클릭 시
       document.getElementById('submitComment').addEventListener('click', submitComment);
+
+      // 댓글 좋아요 버튼 클릭 시
+      document.addEventListener('click', async (e) => {
+        if (e.target.classList.contains('comment-like-btn')) {
+          const commentId = e.target.dataset.commentId;
+          if (!token) return alert('로그인이 필요합니다!');
+
+          try {
+            const res = await fetch(`${API_URL}/comments/${commentId}/like`, {
+              method: 'POST',
+              headers: { 'Authorization': 'Bearer ' + token }
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error);
+
+            alert('❤️ 좋아요를 눌렀습니다!');
+            fetchComments(); // 댓글 목록 새로 고침
+          } catch (err) {
+            alert('❌ ' + err.message);
+          }
+        }
+
+        // 댓글 삭제 버튼 클릭 시
+        if (e.target.classList.contains('comment-delete-btn')) {
+          const commentId = e.target.dataset.commentId;
+          if (!token) return alert('로그인이 필요합니다!');
+
+          try {
+            const res = await fetch(`${API_URL}/comments/${commentId}`, {
+              method: 'DELETE',
+              headers: { 'Authorization': 'Bearer ' + token }
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error);
+
+            alert('🗑 댓글이 삭제되었습니다.');
+            fetchComments(); // 댓글 목록 새로 고침
+          } catch (err) {
+            alert('❌ ' + err.message);
+          }
+        }
+      });
 
       fetchPost();
       fetchComments();
