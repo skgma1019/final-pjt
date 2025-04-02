@@ -4,21 +4,67 @@
   <meta charset="UTF-8">
   <title>내 정보</title>
   <style>
-    body { font-family: sans-serif; padding: 30px; background: #f9f9f9; }
-    .container { max-width: 600px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-    h2 { text-align: center; }
-    .info-item { margin-bottom: 10px; }
+    body {
+      font-family: sans-serif;
+      padding: 30px;
+      background: #f9f9f9;
+    }
+    .container {
+      max-width: 600px;
+      margin: auto;
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    h2, h3 {
+      text-align: center;
+    }
+    .info-item {
+      margin-bottom: 10px;
+    }
+    .form-section {
+      margin-top: 30px;
+      text-align: center;
+    }
+    input {
+      padding: 8px;
+      margin: 5px;
+      width: 250px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    button {
+      padding: 8px 16px;
+      background: #007bff;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #0056b3;
+    }
   </style>
 </head>
 <body>
-  <div id="nav"></div> <!-- 여기서 nav.js를 불러와서 내비게이션 바를 표시합니다. -->
+  <div id="nav"></div>
 
   <div class="container">
     <h2>🙋 내 정보</h2>
     <div id="userInfo">정보 불러오는 중...</div>
+
+    <!-- 닉네임 / 태그 변경 -->
+    <div class="form-section">
+      <h3>🔧 닉네임 / 태그 변경</h3>
+      <input type="text" id="newNickname" placeholder="새 닉네임 (선택)" />
+      <input type="text" id="newTag" placeholder="새 태그 (#포함 또는 생략 가능)" />
+      <button onclick="updateProfile()">변경하기</button>
+    </div>
+
   </div>
 
-  <script src="nav.js"></script> <!-- nav.js 스크립트 추가 -->
+  <script src="nav.js"></script>
   <script>
     const API_URL = 'http://localhost:3000';
 
@@ -31,9 +77,7 @@
 
       try {
         const res = await fetch(`${API_URL}/me/info`, {
-          headers: {
-            'Authorization': 'Bearer ' + token
-          }
+          headers: { 'Authorization': 'Bearer ' + token }
         });
 
         const data = await res.json();
@@ -53,7 +97,42 @@
       }
     }
 
-    fetchUserInfo();
+    async function updateProfile() {
+      const token = localStorage.getItem('token');
+      const nickname = document.getElementById('newNickname').value.trim();
+      const rawTag = document.getElementById('newTag').value.trim();
+
+      if (!nickname && !rawTag) {
+        alert('변경할 내용을 입력해주세요.');
+        return;
+      }
+
+      let tag = null;
+      if (rawTag) {
+        tag = `#${rawTag.toUpperCase().replace(/^#/, '')}`;
+      }
+
+      try {
+        const res = await fetch(`${API_URL}/me/profile`, {
+          method: 'PATCH',
+          headers: {
+            'Authorization': 'Bearer ' + token,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ nickname, tag })
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        alert('✅ 변경 완료! 최신 정보를 불러옵니다.');
+        await fetchUserInfo();
+      } catch (err) {
+        alert('❌ ' + err.message);
+      }
+    }
+
+    fetchUserInfo(); // 최초 로딩
   </script>
 </body>
 </html>

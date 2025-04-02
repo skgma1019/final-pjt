@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>📚 게시판</title>
+  <style>
+  /* 기본 설정 */
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+  
+  body {
+    font-family: 'Arial', sans-serif;
+    background-color: #f0f4f7;
+    color: #333;
+    margin: 0;
+    padding: 0;
+  }
+  
+  /* 제목 스타일 */
+  h1 {
+    text-align: center;
+    font-size: 2rem;
+    background-color: #0052a3;
+    color: #fff;
+    padding: 20px 0;
+    margin: 0;
+  }
+  
+  /* 컨테이너 스타일 */
+  .container {
+    width: 80%;
+    margin: 0 auto;
+    padding: 20px;
+  }
+  
+  /* 게시글 컨테이너 그리드 설정 */
+  .posts-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));  /* 그리드 열 설정 */
+    gap: 20px;  /* 항목 간 간격 */
+    padding: 20px 0;
+    justify-items: center;  /* 카드들이 균등하게 배치되도록 설정 */
+  }
+  
+  /* 개별 게시글 스타일 */
+  .post {
+    background-color: #fff;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+    transition: transform 0.2s, box-shadow 0.2s;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-height: 250px;  /* 최소 높이 설정 */
+    width: 100%;  /* 카드의 너비를 100%로 설정하여 grid 안에서 확장 */
+  }
+  
+  .post:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+  }
+  
+  /* 제목 링크 스타일 */
+  .post a {
+    text-decoration: none;
+    color: #333;
+  }
+  
+  .post a:hover {
+    color: #007bff;
+  }
+  
+  /* 제목 스타일 */
+  .post h2 {
+    font-size: 1.8rem;
+    font-weight: bold;
+    margin: 0 0 10px;
+  }
+  
+  /* 작성자 및 게시글 메타 정보 스타일 */
+  .meta {
+    color: #888;
+    font-size: 0.9rem;
+    margin-bottom: 10px;
+  }
+  
+  .meta a {
+    color: #0052a3;
+    text-decoration: none;
+  }
+  
+  /* 게시글 내용 스타일 */
+  .post p {
+    font-size: 1rem;
+    line-height: 1.6;
+    margin: 15px 0;
+    flex-grow: 1;
+  }
+  
+  /* 버튼 컨테이너 스타일 */
+  .button-container {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  
+  /* 버튼 스타일 */
+  button {
+    padding: 8px 15px;
+    font-size: 1rem;
+    border-radius: 5px;
+    cursor: pointer;
+    border: none;
+    transition: all 0.3s;
+  }
+  
+  /* 수정 버튼 스타일 */
+  .edit-btn {
+    background-color: #ffc107;
+    color: white;
+  }
+  
+  .edit-btn:hover {
+    background-color: #ff9800;
+  }
+  
+  /* 삭제 버튼 스타일 */
+  .delete-btn {
+    background-color: #dc3545;
+    color: white;
+  }
+  
+  .delete-btn:hover {
+    background-color: #c82333;
+  }
+  
+  /* 글쓰기 버튼 스타일 */
+  .write-btn {
+    background-color: #28a745;
+    color: white;
+    margin: 20px 0;
+    padding: 10px 20px;
+    font-size: 1.2rem;
+  }
+  
+  .write-btn:hover {
+    background-color: #218838;
+  }
+  
+  /* 카테고리 필터 스타일 */
+  select {
+    padding: 5px;
+    margin-bottom: 20px;
+  }
+  
+  /* 미디어 쿼리 */
+  @media (max-width: 768px) {
+    .posts-container {
+      grid-template-columns: 1fr 1fr;  /* 작은 화면에서는 두 열로 배치 */
+    }
+  }
+  
+  @media (max-width: 480px) {
+    .posts-container {
+      grid-template-columns: 1fr;  /* 매우 작은 화면에서는 한 열로 배치 */
+    }
+  }
+  </style>
+</head>
+<body>
+  <div id="nav"></div>
+
+  <h1>📚 게시글 목록</h1>
+
+  <label for="categoryFilter">카테고리 필터:</label>
+  <select id="categoryFilter">
+    <option value="">전체</option>
+    <option value="덱추천">덱 추천</option>
+    <option value="카드추천">카드 추천</option>
+    <option value="잡담">잡담</option>
+  </select>
+
+  <!-- 글쓰기 버튼 추가 -->
+  <button class="write-btn" id="writePostBtn">✍️ 글쓰기</button>
+
+  <div class="container">
+    <div class="posts-container" id="postsContainer">
+      <!-- 게시글들이 여기에 동적으로 삽입됩니다 -->
+    </div>
+  </div>
+
+  <script src="nav.js"></script>
+  <script>
+    const API_URL = 'http://localhost:3000';
+
+    document.addEventListener('DOMContentLoaded', () => {
+      async function fetchPosts(category = '') {
+        try {
+          const url = category ? `${API_URL}/articles?category=${category}` : `${API_URL}/articles`;
+          const response = await fetch(url);
+          const posts = await response.json();
+          displayPosts(posts);
+        } catch (error) {
+          console.error('게시글 불러오기 실패:', error);
+        }
+      }
+
+      function displayPosts(posts) {
+        const container = document.getElementById('postsContainer');
+        container.innerHTML = '';
+
+        posts.forEach(post => {
+          const postElem = document.createElement('div');
+          postElem.className = 'post';
+
+          postElem.innerHTML = `
+            <h2><a href="comment.html?articleId=${post.id}">${post.title}</a></h2>
+            <div class="meta">
+              작성자: <a href="user_profile.html?userId=${post.user_id}">${post.nickname}</a> |
+              작성일: ${new Date(post.created_at).toLocaleString()} |
+              카테고리: ${post.category} |
+              좋아요: ${post.likes || 0}
+            </div>
+            <p>${post.content}</p>
+            <div class="button-container">
+              <button class="edit-btn" data-id="${post.id}" data-author="${post.user_id}">✏️ 수정</button>
+              <button class="delete-btn" data-id="${post.id}" data-author="${post.user_id}">🗑 삭제</button>
+            </div>
+          `;
+
+          container.appendChild(postElem);
+        });
+      }
+
+      document.getElementById('categoryFilter').addEventListener('change', (e) => {
+        const category = e.target.value;
+        fetchPosts(category);
+      });
+
+      async function editPost(id, postAuthorId) {
+        const token = localStorage.getItem('token');
+        if (!token) {
+          alert('로그인 후에 하세요!');
+          return;
+        }
+
+        const userId = await getCurrentUserIdFromToken(token);
+        if (userId !== postAuthorId) {
+          alert('작성자만 수정할 수 있습니다.');
+          return;
+        }
+
+        location.href = `write.html?editId=${id}`;
+      }
+
+      async function deletePost(id) {
+        const token = localStorage.getItem('token');
+        if (!token) {
+          alert('로그인 후에 하세요!');
+          return;
+        }
+
+        if (confirm('정말 이 게시글을 삭제하시겠습니까?')) {
+          try {
+            const response = await fetch(`${API_URL}/articles/${id}`, {
+              method: 'DELETE',
+              headers: {
+                'Authorization': `Bearer ${token}`,
+              },
+            });
+
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error);
+
+            alert('🗑 게시글이 삭제되었습니다.');
+            fetchPosts();
+          } catch (error) {
+            alert('❌ ' + error.message);
+          }
+        }
+      }
+
+      async function getCurrentUserIdFromToken(token) {
+        try {
+          const response = await fetch(`${API_URL}/users/me`, {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+            },
+          });
+
+          const data = await response.json();
+          if (!response.ok) throw new Error(data.error);
+          return data.id; // 반환되는 데이터 구조에 맞게 조정해야 할 수 있음
+        } catch (error) {
+          console.error('현재 사용자 정보 불러오기 실패:', error);
+          return null;
+        }
+      }
+
+      // 글쓰기 버튼 클릭 시 글쓰기 페이지로 이동
+      document.getElementById('writePostBtn').addEventListener('click', () => {
+        location.href = 'write.html';
+      });
+
+      document.getElementById('postsContainer').addEventListener('click', (event) => {
+        const postId = event.target.getAttribute('data-id');
+        const postAuthorId = event.target.getAttribute('data-author');
+
+        if (event.target.classList.contains('edit-btn')) {
+          editPost(postId, postAuthorId);
+        } else if (event.target.classList.contains('delete-btn')) {
+          deletePost(postId);
+        }
+      });
+
+      fetchPosts(); // 최초 게시글 로딩
+    });
+  </script>
+</body>
+</html>

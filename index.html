@@ -2,151 +2,77 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <title>게시글 목록</title>
+  <title>🏠 Clash 커뮤니티 홈</title>
   <style>
     body {
       font-family: Arial, sans-serif;
-      margin: 20px;
-      background: #f4f4f4;
+      text-align: center;
+      padding: 50px;
+      background: #eef2f7;
     }
-    .post {
-      background: #fff;
-      border: 1px solid #ddd;
-      padding: 15px;
-      margin-bottom: 20px;
-      border-radius: 5px;
-    }
-    .post h2 {
-      margin: 0 0 10px;
-    }
-    .post .meta {
-      color: #777;
-      font-size: 0.9em;
+    h1 {
+      font-size: 2em;
       margin-bottom: 10px;
     }
-    .button-container {
+    p {
+      font-size: 1.2em;
+      margin-bottom: 40px;
+    }
+    .menu {
       display: flex;
-      gap: 10px;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 20px;
     }
-    button {
-      background-color: #007bff;
+    .menu a {
+      display: inline-block;
+      padding: 14px 28px;
+      font-size: 16px;
+      text-decoration: none;
+      background: #007bff;
       color: white;
-      border: none;
-      padding: 5px 10px;
-      border-radius: 4px;
-      cursor: pointer;
+      border-radius: 6px;
+      transition: background 0.3s;
     }
-    button:hover {
-      background-color: #0056b3;
-    }
-    .delete-btn {
-      background-color: #dc3545;
-    }
-    .delete-btn:hover {
-      background-color: #c82333;
+    .menu a:hover {
+      background: #0056b3;
     }
   </style>
 </head>
 <body>
-  <div id="nav"></div> <!-- 내비게이션 바가 여기 들어갑니다 -->
+  <div id="nav"></div>
 
-  <h1 style="text-align:center;">📚 게시글 목록</h1>
-  <div id="postsContainer">
-    <!-- 게시글 목록이 여기에 표시됩니다 -->
+  <h1>👑 Clash Royale 커뮤니티에 오신 것을 환영합니다!</h1>
+  <p>여기서 유저 정보도 보고, 덱도 공유하고, 자유롭게 소통하세요!</p>
+
+  <div class="menu">
+    <a href="board.html">📋 게시판</a>
+    <a href="write.html">✍️ 글 작성</a>
+    <a href="profile.html">🙋 내 정보</a>
   </div>
 
-  <script src="nav.js"></script> <!-- nav.js 스크립트 추가 -->
+  <!-- 로그인/회원가입 버튼: 로그인 안 했을 때만 표시 -->
+  <div id="authButtons" style="margin-top: 30px;"></div>
+
+  <script src="nav.js"></script>
   <script>
-    const API_URL = 'http://localhost:3000';
+    const token = localStorage.getItem('token');
+    const authButtons = document.getElementById('authButtons');
 
-    document.addEventListener('DOMContentLoaded', () => {
-      // 게시글 목록 가져오기
-      async function fetchPosts() {
-        try {
-          const response = await fetch(`${API_URL}/articles`);
-          const posts = await response.json();
-          displayPosts(posts);
-        } catch (error) {
-          console.error('게시글 불러오기 실패:', error);
-        }
-      }
-
-      // 게시글을 HTML로 렌더링
-      function displayPosts(posts) {
-        const container = document.getElementById('postsContainer');
-        container.innerHTML = '';  // 게시글 목록 초기화
-
-        posts.forEach(post => {
-          const postElem = document.createElement('div');
-          postElem.className = 'post';
-
-          postElem.innerHTML = `
-            <h2><a href="comment.html?articleId=${post.id}">${post.title}</a></h2>
-            <div class="meta">
-              작성자: ${post.nickname ?? '알 수 없음'} | 작성일: ${new Date(post.created_at).toLocaleString()} | 좋아요: ${post.likes || 0}
-            </div>
-            <p>${post.content}</p>
-            <div class="button-container">
-              <button class="edit-btn" data-id="${post.id}">✏️ 수정</button>
-              <button class="delete-btn" data-id="${post.id}">🗑 삭제</button>
-            </div>
-          `;
-
-          container.appendChild(postElem);
-        });
-      }
-
-      // 게시글 수정
-      async function editPost(id) {
-        // 수정 페이지로 리디렉션
-        location.href = `write.html?editId=${id}`;
-      }
-
-      // 게시글 삭제
-      async function deletePost(id) {
-        const token = localStorage.getItem('token');
-
-        if (!token) {
-          alert('로그인이 필요합니다!');
-          return;
-        }
-
-        if (confirm('정말 이 게시글을 삭제하시겠습니까?')) {
-          try {
-            const response = await fetch(`${API_URL}/articles/${id}`, {
-              method: 'DELETE',
-              headers: {
-                'Authorization': `Bearer ${token}`,
-              },
-            });
-
-            const data = await response.json();
-            if (!response.ok) throw new Error(data.error);
-            
-            alert('🗑 게시글이 삭제되었습니다.');
-            fetchPosts();  // 삭제 후 게시글 목록 새로고침
-          } catch (error) {
-            console.error('게시글 삭제 실패:', error);
-            alert('작성자가 아니면 삭제 할 수 없습니다. ❌');
-          }
-        }
-      }
-
-      // 수정 및 삭제 버튼 클릭 이벤트
-      document.getElementById('postsContainer').addEventListener('click', (event) => {
-        const postId = event.target.getAttribute('data-id');
-
-        if (event.target.classList.contains('edit-btn')) {
-          editPost(postId);
-        } else if (event.target.classList.contains('delete-btn')) {
-          deletePost(postId);
-        }
-      });
-
-      // 게시글 목록 로드
-      fetchPosts();
-    });
+    if (!token && authButtons) {
+      authButtons.innerHTML = `
+        <a href="login.html" style="margin: 0 10px;">
+          <button style="padding: 8px 16px; border: none; background: #28a745; color: white; border-radius: 4px; cursor: pointer;">
+            🔐 로그인
+          </button>
+        </a>
+        <a href="register.html" style="margin: 0 10px;">
+          <button style="padding: 8px 16px; border: none; background: #007bff; color: white; border-radius: 4px; cursor: pointer;">
+            📝 회원가입
+          </button>
+        </a>
+      `;
+    }
   </script>
 </body>
 </html>
-  

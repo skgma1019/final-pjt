@@ -24,6 +24,13 @@
       font-size: 0.9em;
       margin-bottom: 10px;
     }
+    .post img {
+      width: 300px;
+      height: auto;
+      margin-top: 10px;
+      border-radius: 6px;
+      display: block;
+    }
     .comment-section {
       background: #fff;
       border: 1px solid #ddd;
@@ -40,25 +47,15 @@
       padding: 10px;
       border-radius: 6px;
     }
-    .back-btn {
-      background: #6c757d;
-      color: white;
-      border: none;
-      padding: 10px 20px;
-      border-radius: 4px;
-      cursor: pointer;
-      margin-top: 20px;
-    }
-    .back-btn:hover {
-      background: #5a6268;
-    }
     .comment-form {
       margin-top: 20px;
     }
-    .comment-form input {
+    .comment-form input[type="text"],
+    .comment-form input[type="file"] {
       width: 80%;
       padding: 8px;
       margin-right: 5px;
+      margin-bottom: 5px;
       border-radius: 4px;
       border: 1px solid #ccc;
     }
@@ -84,10 +81,26 @@
     .comment-like-btn:hover {
       background: #d1e7ff;
     }
+    .comment-img {
+      max-width: 200px;
+      border-radius: 5px;
+      margin-top: 5px;
+    }
+    .back-btn {
+      background: #6c757d;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-top: 20px;
+    }
+    .back-btn:hover {
+      background: #5a6268;
+    }
   </style>
 </head>
 <body>
-  <!-- 내비게이션 바 -->
   <div id="nav"></div>
 
   <h1 style="text-align:center;">📜 댓글 보기</h1>
@@ -96,20 +109,20 @@
 
   <div class="comment-section">
     <h3>💬 댓글</h3>
-    <ul id="commentsContainer">
-      <!-- 댓글들이 여기에 표시됩니다 -->
-    </ul>
+    <ul id="commentsContainer"></ul>
   </div>
 
   <div class="comment-form">
     <h3>댓글 작성</h3>
-    <input type="text" id="commentInput" placeholder="댓글을 입력하세요" required />
-    <button id="submitComment">댓글 작성</button>
+    <form id="commentForm" enctype="multipart/form-data">
+      <input type="text" id="commentInput" name="content" placeholder="댓글을 입력하세요" required />
+      <input type="file" id="commentImage" name="image" accept="image/*" />
+      <button type="submit">댓글 작성</button>
+    </form>
   </div>
 
-  <button class="back-btn" onclick="window.location.href='index.html';">⬅ 게시글 목록으로 돌아가기</button>
+  <button class="back-btn" onclick="window.location.href='board.html';">⬅ 게시글 목록으로 돌아가기</button>
 
-  <!-- nav.js 스크립트 포함 -->
   <script src="nav.js"></script>
   <script>
     const API_URL = 'http://localhost:3000';
@@ -138,40 +151,28 @@
         }
       }
 
-      async function submitComment() {
-        const commentContent = document.getElementById('commentInput').value;
-
-        if (!commentContent) {
-          alert('댓글을 입력하세요!');
-          return;
-        }
-
-        if (!token) {
-          alert('로그인이 필요합니다!');
-          return;
-        }
+      document.getElementById('commentForm').addEventListener('submit', async function (e) {
+        e.preventDefault();
+        const formData = new FormData(this);
+        if (!token) return alert('로그인이 필요합니다!');
 
         try {
           const res = await fetch(`${API_URL}/articles/${articleId}/comments`, {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': 'Bearer ' + token
-            },
-            body: JSON.stringify({ content: commentContent })
+            headers: { 'Authorization': 'Bearer ' + token },
+            body: formData
           });
 
           const data = await res.json();
           if (!res.ok) throw new Error(data.error);
 
           alert('✅ 댓글이 작성되었습니다!');
-          fetchComments(); // 댓글 목록 새로 고침
-          document.getElementById('commentInput').value = ''; // 댓글 입력창 비우기
+          this.reset();
+          fetchComments();
         } catch (error) {
-          console.error('댓글 작성 실패:', error);
           alert('❌ 댓글 작성 실패: ' + error.message);
         }
-      }
+      });
 
       function displayPost(post) {
         const container = document.getElementById('postContainer');
@@ -182,30 +183,34 @@
               작성자: ${post.nickname ?? '알 수 없음'} | 작성일: ${new Date(post.created_at).toLocaleString()} | 좋아요: ${post.likes || 0}
             </div>
             <p>${post.content}</p>
+            ${post.image_url ? `<img src="${API_URL}${post.image_url}" alt="첨부 이미지">` : ''}
           </div>
         `;
       }
 
       function displayComments(comments) {
-        const container = document.getElementById('commentsContainer');
-        container.innerHTML = '';
+  const container = document.getElementById('commentsContainer');
+  container.innerHTML = '';
 
-        comments.forEach(comment => {
-          const commentElem = document.createElement('li');
-          commentElem.innerHTML = `
-            <strong>${comment.nickname ?? '알 수 없음'}:</strong> ${comment.content} <br/>
-            <small>${new Date(comment.created_at).toLocaleString()}</small>
-            <button class="comment-like-btn" data-comment-id="${comment.id}">❤️ 좋아요 (${comment.likes || 0})</button>
-            <button class="comment-delete-btn" data-comment-id="${comment.id}">🗑 삭제</button>
-          `;
-          container.appendChild(commentElem);
-        });
-      }
+  comments.forEach(comment => {
+    const commentElem = document.createElement('li');
+    commentElem.innerHTML = `
+      <strong>
+        <a href="user_profile.html?userId=${comment.user_id}">
+          ${comment.nickname ?? '알 수 없음'}
+        </a>
+      </strong>: ${comment.content} <br/>
+      <small>${new Date(comment.created_at).toLocaleString()}</small>
+      ${comment.image_url ? `<br/><img src="${API_URL}${comment.image_url}" style="width: 200px; border-radius: 6px;">` : ''}
+      <div style="margin-top: 5px;">
+        <button class="comment-like-btn" data-comment-id="${comment.id}">❤️ 좋아요 (${comment.likes || 0})</button>
+        <button class="comment-delete-btn" data-comment-id="${comment.id}">🗑 삭제</button>
+      </div>
+    `;
+    container.appendChild(commentElem);
+  });
+}
 
-      // 댓글 작성 버튼 클릭 시
-      document.getElementById('submitComment').addEventListener('click', submitComment);
-
-      // 댓글 좋아요 버튼 클릭 시
       document.addEventListener('click', async (e) => {
         if (e.target.classList.contains('comment-like-btn')) {
           const commentId = e.target.dataset.commentId;
@@ -220,13 +225,12 @@
             if (!res.ok) throw new Error(data.error);
 
             alert('❤️ 좋아요를 눌렀습니다!');
-            fetchComments(); // 댓글 목록 새로 고침
+            fetchComments();
           } catch (err) {
             alert('❌ ' + err.message);
           }
         }
 
-        // 댓글 삭제 버튼 클릭 시
         if (e.target.classList.contains('comment-delete-btn')) {
           const commentId = e.target.dataset.commentId;
           if (!token) return alert('로그인이 필요합니다!');
@@ -240,7 +244,7 @@
             if (!res.ok) throw new Error(data.error);
 
             alert('🗑 댓글이 삭제되었습니다.');
-            fetchComments(); // 댓글 목록 새로 고침
+            fetchComments();
           } catch (err) {
             alert('❌ ' + err.message);
           }

@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>유저 정보 보기</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 30px;
+      background: #f9f9f9;
+    }
+    .container {
+      max-width: 600px;
+      margin: auto;
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    h2 {
+      text-align: center;
+    }
+    .info-item {
+      margin-bottom: 10px;
+    }
+    .info-item label {
+      font-weight: bold;
+    }
+    .private-message {
+      text-align: center;
+      color: red;
+      font-weight: bold;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div id="nav"></div>
+
+  <div class="container">
+    <h2>👤 유저 정보</h2>
+    <div id="userInfo">불러오는 중...</div>
+  </div>
+
+  <script src="nav.js"></script>
+  <script>
+    const API_URL = 'http://localhost:3000';
+    const params = new URLSearchParams(window.location.search);
+    const userId = params.get('userId');
+
+    async function fetchOtherUserInfo() {
+      if (!userId) {
+        document.getElementById('userInfo').textContent = '유저 ID가 없습니다.';
+        return;
+      }
+
+      try {
+        const res = await fetch(`${API_URL}/users/${userId}/info`);
+        const data = await res.json();
+
+        if (!res.ok) throw new Error(data.error);
+
+        if (data.is_public === 0) {
+          document.getElementById('userInfo').innerHTML = '<div class="private-message">🔒 비공개 처리한 계정입니다.</div>';
+          return;
+        }
+
+        document.getElementById('userInfo').innerHTML = `
+          <div class="info-item"><label>🎮 닉네임:</label> ${data.nickname}</div>
+          <div class="info-item"><label>#️⃣ 태그:</label> ${data.tag}</div>
+          <div class="info-item"><label>🏆 트로피:</label> ${data.trophies ?? '정보 없음'}</div>
+          <div class="info-item"><label>🎖️ 클랜:</label> ${data.clan_name ?? '정보 없음'}</div>
+          <div class="info-item"><label>🏟 아레나:</label> ${data.arena ?? '정보 없음'}</div>
+          <div class="info-item"><small>⏱ 마지막 업데이트: ${data.last_updated}</small></div>
+        `;
+      } catch (err) {
+        document.getElementById('userInfo').textContent = '❌ 오류: ' + err.message;
+      }
+    }
+
+    fetchOtherUserInfo();
+  </script>
+</body>
+</html>

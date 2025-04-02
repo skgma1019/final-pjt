@@ -179,5 +179,175 @@ router.get('/me/info', authenticateToken, (req, res) => {
   });
 });
 
+router.patch('/me/profile', authenticateToken, async (req, res) => {
+  const db = new sqlite3.Database('./clash_community.db');
+  const userId = req.user.id;
+  const { nickname, tag } = req.body;
+
+  if (!nickname && !tag) {
+    return res.status(400).json({ error: '수정할 항목이 없습니다.' });
+  }
+
+  try {
+    // 중복 닉네임/태그 체크
+    const checkQuery = `
+      SELECT * FROM users_tag WHERE (nickname = ? OR tag = ?) AND user_id != ?
+    `;
+    db.get(checkQuery, [nickname, tag, userId], async (err, existing) => {
+      if (err) return res.status(500).json({ error: '중복 확인 실패' });
+
+      if (existing) {
+        if (nickname && existing.nickname === nickname) {
+          return res.status(409).json({ error: '이미 존재하는 닉네임입니다.' });
+        }
+        if (tag && existing.tag === tag) {
+          return res.status(409).json({ error: '이미 존재하는 태그입니다.' });
+        }
+      }
+
+      // 업데이트할 필드 구성
+      const fields = [];
+      const values = [];
+
+      if (nickname) {
+        fields.push('nickname = ?');
+        values.push(nickname);
+      }
+
+      let trophies = null, clanName = null, arena = null;
+      if (tag) {
+        // ✅ 태그 정규화: #붙이기 + 대문자화
+        const normalizedTag = `#${tag.toUpperCase().replace(/^#/, '')}`;
+        fields.push('tag = ?');
+        values.push(normalizedTag);
+
+        // ✅ Clash Royale API 호출
+        try {
+          const encodedTag = encodeURIComponent(normalizedTag);
+          const clashRes = await axios.get(`https://proxy.royaleapi.dev/v1/players/${encodedTag}`, {
+            headers: {
+              Authorization: `Bearer ${process.env.CLASH_API_TOKEN}`
+            }
+          });
+
+          const data = clashRes.data;
+          trophies = data.trophies;
+          clanName = data.clan?.name ?? null;
+          arena = data.arena?.name ?? null;
+
+          fields.push('trophies = ?');
+          values.push(trophies);
+          fields.push('clan_name = ?');
+          values.push(clanName);
+          fields.push('arena = ?');
+          values.push(arena);
+        } catch (apiErr) {
+          console.error('❌ Clash API 오류:', apiErr.message);
+          return res.status(500).json({ error: 'Clash Royale API 호출 실패' });
+        }
+      }
+
+      fields.push('last_updated = CURRENT_TIMESTAMP');
+      values.push(userId);
+
+      const updateQuery = `
+        UPDATE users_tag SET ${fields.join(', ')} WHERE user_id = ?
+      `;
+
+      db.run(updateQuery, values, function (err) {
+        if (err) {
+          console.error('❌ DB 업데이트 오류:', err.message);
+          return res.status(500).json({ error: '프로필 업데이트 실패' });
+        }
+
+        res.json({ message: '프로필 정보가 업데이트되었습니다.' });
+        db.close();
+      });
+    });
+  } catch (err) {
+    console.error('❌ 예외 발생:', err.message);
+    res.status(500).json({ error: '서버 오류 발생' });
+    db.close();
+  }
+});
+
+// GET /users/:id/info - 다른 유저의 Clash Royale 프로필 정보 조회
+router.get('/users/:id/info', (req, res) => {
+  const db = new sqlite3.Database('./clash_community.db');
+  const userId = req.params.id;
+
+  const query = `
+     SELECT u.email, ut.nickname, ut.tag, ut.trophies, ut.clan_name, ut.arena, ut.last_updated
+    FROM users u
+    LEFT JOIN users_tag ut ON u.id = ut.user_id
+    WHERE u.id = ?
+  `;
+
+  db.get(query, [userId], (err, row) => {
+    if (err) {
+      console.error('❌ 유저 정보 조회 오류:', err.message);
+      return res.status(500).json({ error: '유저 정보 불러오기 실패' });
+    }
+
+    if (!row) {
+      return res.status(404).json({ error: '해당 유저를 찾을 수 없습니다' });
+    }
+
+    res.json(row);
+    db.close();
+  });
+});
+
+// 유저 공개 여부 기반 정보 제공 API
+router.get('/users/:id/info', (req, res) => {
+  const db = new sqlite3.Database('./clash_community.db');
+  const userId = req.params.id;
+
+  const query = `
+    SELECT nickname, tag, trophies, clan_name, arena, last_updated, is_public
+    FROM users_tag
+    WHERE user_id = ?
+  `;
+
+  db.get(query, [userId], (err, row) => {
+    if (err) {
+      console.error('❌ 유저 정보 조회 오류:', err.message);
+      return res.status(500).json({ error: '유저 정보를 불러오지 못했습니다' });
+    }
+
+    if (!row || row.is_public === 0) {
+      return res.status(403).json({ error: '비공개 처리한 계정입니다.' });
+    }
+
+
+    
+    res.json(row);
+    db.close();
+  });
+});
+
+
+router.patch('/me/privacy', authenticateToken, (req, res) => {
+  const db = new sqlite3.Database('./clash_community.db');
+  const userId = req.user.id;
+  const { is_public } = req.body;
+
+  if (typeof is_public !== 'number') {
+    return res.status(400).json({ error: 'is_public은 숫자(0 또는 1)여야 합니다.' });
+  }
+  
+  const query = `UPDATE users_tag SET is_public = ? WHERE user_id = ?`;
+  
+  db.run(query, [is_public, userId], function (err) {
+    if (err) {
+      console.error('❌ 공개 설정 변경 오류:', err.message);
+      return res.status(500).json({ error: '공개 설정 저장 실패' });
+    }
+  
+    res.json({ message: '공개 설정이 저장되었습니다.' });
+    db.close();
+  });
+  
+    });
 
 export default router;
