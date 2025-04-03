@@ -20,7 +20,7 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
-export default router;
+
 
 // 댓글 작성 (이미지 포함)
 router.post('/articles/:id/comments', authenticateToken, upload.single('image'), (req, res) => {
@@ -136,3 +136,67 @@ router.post('/comments/:id/like', authenticateToken, (req, res) => {
     }
   });
 });
+
+// 댓글 작성 (대댓글 포함)
+router.post('/articles/:id/comments', authenticateToken, upload.single('image'), (req, res) => {
+  const db = new sqlite3.Database('./clash_community.db');
+  const articleId = req.params.id;
+  const userId = req.user.id;
+  const { content, parentId } = req.body;  // parentId를 추가
+
+  const imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
+
+  if (!content) return res.status(400).json({ error: '댓글 내용을 입력해주세요.' });
+
+  const createdAt = new Date().toISOString();
+
+  const query = `
+    INSERT INTO comments (article_id, user_id, content, created_at, image_url, parent_id)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `;
+
+  db.run(query, [articleId, userId, content, createdAt, imageUrl, parentId || null], function (err) {
+    if (err) {
+      console.error('❌ 댓글 작성 오류:', err.message);
+      return res.status(500).json({ error: '댓글 작성 실패' });
+    }
+    res.status(201).json({ message: '댓글이 작성되었습니다.', commentId: this.lastID });
+    db.close();
+  });
+});
+
+// 댓글 조회 (대댓글 포함)
+router.get('/articles/:id/comments', (req, res) => {
+  const db = new sqlite3.Database('./clash_community.db');
+  const articleId = req.params.id;
+
+  const query = `
+    SELECT c.id, c.user_id, c.content, c.created_at, u.nickname, c.image_url, c.parent_id,
+           (SELECT COUNT(*) FROM comment_likes WHERE comment_id = c.id) AS likes
+    FROM comments c
+    LEFT JOIN users_tag u ON c.user_id = u.user_id
+    WHERE c.article_id = ?
+    ORDER BY c.created_at DESC
+  `;
+
+  db.all(query, [articleId], (err, rows) => {
+    if (err) {
+      console.error('❌ 댓글 조회 오류:', err.message);
+      return res.status(500).json({ error: '댓글을 불러오는 데 실패했습니다.' });
+    }
+
+    // 부모 댓글과 대댓글을 구분하여 반환
+    const comments = rows.filter(comment => comment.parent_id === null);
+    const replies = rows.filter(comment => comment.parent_id !== null);
+
+    comments.forEach(comment => {
+      comment.replies = replies.filter(reply => reply.parent_id === comment.id);
+    });
+
+    res.json(comments);
+    db.close();
+  });
+});
+
+// ... 모든 라우터 정의가 끝난 뒤
+export default router;

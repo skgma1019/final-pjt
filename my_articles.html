@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>내 게시글</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      background: #f4f4f4;
+    }
+    .post {
+      background: #fff;
+      border: 1px solid #ddd;
+      padding: 15px;
+      margin-bottom: 20px;
+      border-radius: 5px;
+    }
+    .post h2 {
+      margin: 0 0 10px;
+    }
+    .post .meta {
+      color: #777;
+      font-size: 0.9em;
+      margin-bottom: 10px;
+    }
+    .post img {
+      width: 300px;
+      height: auto;
+      margin-top: 10px;
+      border-radius: 6px;
+      display: block;
+    }
+    .back-btn {
+      background: #6c757d;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-top: 20px;
+    }
+    .back-btn:hover {
+      background: #5a6268;
+    }
+  </style>
+</head>
+<body>
+  <h1 style="text-align:center;">내 게시글</h1>
+
+  <div id="postsContainer"></div>
+
+  <button class="back-btn" onclick="window.location.href='profile.html';">⬅ 내 프로필로 돌아가기</button>
+
+  <script>
+    const API_URL = 'http://localhost:3000';
+    const token = localStorage.getItem('token');
+
+    window.addEventListener('DOMContentLoaded', () => {
+      fetchMyArticles();
+    });
+
+    // 내 게시글을 불러오는 함수
+    async function fetchMyArticles() {
+      if (!token) return alert('로그인이 필요합니다!');
+      try {
+        const response = await fetch(`${API_URL}/my-articles`, {
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+        const articles = await response.json();
+        displayArticles(articles);
+      } catch (error) {
+        console.error('게시글을 불러오는 데 실패했습니다.', error);
+      }
+    }
+
+    // 게시글을 화면에 출력하는 함수
+    function displayArticles(articles) {
+      const container = document.getElementById('postsContainer');
+      container.innerHTML = '';
+      articles.forEach(article => {
+        const articleElem = document.createElement('div');
+        articleElem.classList.add('post');
+        articleElem.innerHTML = `
+          <h2>${article.title}</h2>
+          <div class="meta">
+            작성일: ${new Date(article.created_at).toLocaleString()} |
+            좋아요: ${article.likes || 0} |
+            조회수: ${article.views || 0}
+          </div>
+          <p>${article.content.substring(0, 100)}...</p>
+          <a href="comment.html?articleId=${article.id}" class="read-more">자세히 보기</a>
+        `;
+        container.appendChild(articleElem);
+      });
+    }
+  </script>
+</body>
+</html>

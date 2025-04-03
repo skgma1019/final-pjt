@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <title>댓글 보기</title>
+  <title>게시글 보기</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -30,6 +30,7 @@
       margin-top: 10px;
       border-radius: 6px;
       display: block;
+      cursor: pointer;
     }
     .comment-section {
       background: #fff;
@@ -103,8 +104,7 @@
 <body>
   <div id="nav"></div>
 
-  <h1 style="text-align:center;">📜 댓글 보기</h1>
-
+  <h1 style="text-align:center;">📜 게시글 보기</h1>
   <div id="postContainer"></div>
 
   <div class="comment-section">
@@ -113,7 +113,7 @@
   </div>
 
   <div class="comment-form">
-    <h3>댓글 작성</h3>
+    <h3>📝 댓글 작성</h3>
     <form id="commentForm" enctype="multipart/form-data">
       <input type="text" id="commentInput" name="content" placeholder="댓글을 입력하세요" required />
       <input type="file" id="commentImage" name="image" accept="image/*" />
@@ -123,76 +123,116 @@
 
   <button class="back-btn" onclick="window.location.href='board.html';">⬅ 게시글 목록으로 돌아가기</button>
 
+  <!-- 이미지 화면 -->
+  <div id="imageModal" style="display:none; position:fixed; z-index:9999; top:0; left:0; width:100%; height:100%; background-color:rgba(0,0,0,0.8); justify-content:center; align-items:center;">
+    <img id="modalImage" src="" style="max-width:90%; max-height:90%; border-radius:10px;" />
+  </div>
+
   <script src="nav.js"></script>
   <script>
-    const API_URL = 'http://localhost:3000';
-    const params = new URLSearchParams(window.location.search);
-    const articleId = params.get('articleId');
-    const token = localStorage.getItem('token');
 
-    document.addEventListener('DOMContentLoaded', () => {
-      async function fetchPost() {
-        try {
-          const response = await fetch(`${API_URL}/articles/${articleId}`);
-          const post = await response.json();
-          displayPost(post);
-        } catch (error) {
-          console.error('게시글 불러오기 실패:', error);
-        }
-      }
+const API_URL = 'http://localhost:3000';
+const params = new URLSearchParams(window.location.search);
+const articleId = params.get('articleId');
+const token = localStorage.getItem('token');
 
-      async function fetchComments() {
-        try {
-          const response = await fetch(`${API_URL}/articles/${articleId}/comments`);
-          const comments = await response.json();
-          displayComments(comments);
-        } catch (error) {
-          console.error('댓글 불러오기 실패:', error);
-        }
-      }
+// 초기 로딩
+window.addEventListener('DOMContentLoaded', () => {
+  const viewedKey = `viewed_${articleId}`;
+  if (!sessionStorage.getItem(viewedKey)) {
+    sessionStorage.setItem(viewedKey, '1');
+  }
+  fetchPost();
+  fetchComments();
+  setupImageModal();
+  setupCommentForm();
+});
 
-      document.getElementById('commentForm').addEventListener('submit', async function (e) {
-        e.preventDefault();
-        const formData = new FormData(this);
-        if (!token) return alert('로그인이 필요합니다!');
+// 게시글 조회
+async function fetchPost() {
+  const viewedKey = `viewed_${articleId}`;
+  const viewQuery = !sessionStorage.getItem(viewedKey) ? '?view=true' : '';
+  sessionStorage.setItem(viewedKey, '1');
 
-        try {
-          const res = await fetch(`${API_URL}/articles/${articleId}/comments`, {
-            method: 'POST',
-            headers: { 'Authorization': 'Bearer ' + token },
-            body: formData
-          });
+  try {
+    const response = await fetch(`${API_URL}/articles/${articleId}${viewQuery}`, {
+      headers: token ? { 'Authorization': 'Bearer ' + token } : {}
+    });
+    const post = await response.json();
+    displayPost(post);
+  } catch (error) {
+    console.error('게시글 불러오기 실패:', error);
+  }
+}
 
-          const data = await res.json();
-          if (!res.ok) throw new Error(data.error);
+// 게시글 렌더링 + 좋아요
+function displayPost(post) {
+  const container = document.getElementById('postContainer');
+  const liked = post.liked;
+  const likeStyle = liked
+    ? 'background-color: #007bff; color: white;'
+    : 'background-color: #e0e0e0; color: #333;';
 
-          alert('✅ 댓글이 작성되었습니다!');
-          this.reset();
-          fetchComments();
-        } catch (error) {
-          alert('❌ 댓글 작성 실패: ' + error.message);
+  container.innerHTML = `
+    <div class="post">
+      <h2>${post.title}</h2>
+      <div class="meta">
+        작성자: ${post.nickname ?? '알 수 없음'} |
+        작성일: ${new Date(post.created_at).toLocaleString()} |
+        좋아요: <span id="likeCount">${post.likes || 0}</span> |
+        조회수: ${post.views || 0}
+      </div>
+      <p>${post.content}</p>
+      ${post.image_url ? `<img src="${API_URL}${post.image_url}" alt="첨부 이미지">` : ''}
+      <button id="likePostBtn" style="${likeStyle}; margin-top: 10px; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer;">
+        👍 좋아요 (${post.likes || 0})
+      </button>
+    </div>
+  `;
+
+  document.getElementById('likePostBtn').addEventListener('click', async () => {
+    if (!token) return alert('로그인이 필요합니다!');
+    try {
+      const res = await fetch(`${API_URL}/articles/${articleId}/like`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + token
         }
       });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      alert(data.message);
+      fetchPost();
+    } catch (err) {
+      alert('❌ ' + err.message);
+    }
+  });
+}
 
-      function displayPost(post) {
-        const container = document.getElementById('postContainer');
-        container.innerHTML = `
-          <div class="post">
-            <h2>${post.title}</h2>
-            <div class="meta">
-              작성자: ${post.nickname ?? '알 수 없음'} | 작성일: ${new Date(post.created_at).toLocaleString()} | 좋아요: ${post.likes || 0}
-            </div>
-            <p>${post.content}</p>
-            ${post.image_url ? `<img src="${API_URL}${post.image_url}" alt="첨부 이미지">` : ''}
-          </div>
-        `;
-      }
+// 댓글 조회
+async function fetchComments() {
+  try {
+    const response = await fetch(`${API_URL}/articles/${articleId}/comments`, {
+      headers: token ? { 'Authorization': 'Bearer ' + token } : {}
+    });
+    const comments = await response.json();
+    displayComments(comments);
+  } catch (error) {
+    console.error('댓글 불러오기 실패:', error);
+  }
+}
 
-      function displayComments(comments) {
+// 댓글 렌더링
+function displayComments(comments) {
   const container = document.getElementById('commentsContainer');
   container.innerHTML = '';
-
   comments.forEach(comment => {
+    const liked = comment.liked;
+    const likeStyle = liked
+      ? 'background-color: #007bff; color: white;'
+      : 'background-color: #f1f1f1; color: #007bff;';
+
     const commentElem = document.createElement('li');
     commentElem.innerHTML = `
       <strong>
@@ -201,9 +241,9 @@
         </a>
       </strong>: ${comment.content} <br/>
       <small>${new Date(comment.created_at).toLocaleString()}</small>
-      ${comment.image_url ? `<br/><img src="${API_URL}${comment.image_url}" style="width: 200px; border-radius: 6px;">` : ''}
+      ${comment.image_url ? `<br/><img src="${API_URL}${comment.image_url}" class="comment-img">` : ''}
       <div style="margin-top: 5px;">
-        <button class="comment-like-btn" data-comment-id="${comment.id}">❤️ 좋아요 (${comment.likes || 0})</button>
+        <button class="comment-like-btn" data-comment-id="${comment.id}" style="${likeStyle}">👍 좋아요 (${comment.likes || 0})</button>
         <button class="comment-delete-btn" data-comment-id="${comment.id}">🗑 삭제</button>
       </div>
     `;
@@ -211,49 +251,88 @@
   });
 }
 
-      document.addEventListener('click', async (e) => {
-        if (e.target.classList.contains('comment-like-btn')) {
-          const commentId = e.target.dataset.commentId;
-          if (!token) return alert('로그인이 필요합니다!');
+// 댓글 작성 핸들러
+function setupCommentForm() {
+  document.getElementById('commentForm').addEventListener('submit', async function (e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+    if (!token) return alert('로그인이 필요합니다!');
 
-          try {
-            const res = await fetch(`${API_URL}/comments/${commentId}/like`, {
-              method: 'POST',
-              headers: { 'Authorization': 'Bearer ' + token }
-            });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error);
-
-            alert('❤️ 좋아요를 눌렀습니다!');
-            fetchComments();
-          } catch (err) {
-            alert('❌ ' + err.message);
-          }
-        }
-
-        if (e.target.classList.contains('comment-delete-btn')) {
-          const commentId = e.target.dataset.commentId;
-          if (!token) return alert('로그인이 필요합니다!');
-
-          try {
-            const res = await fetch(`${API_URL}/comments/${commentId}`, {
-              method: 'DELETE',
-              headers: { 'Authorization': 'Bearer ' + token }
-            });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error);
-
-            alert('🗑 댓글이 삭제되었습니다.');
-            fetchComments();
-          } catch (err) {
-            alert('❌ ' + err.message);
-          }
-        }
+    try {
+      const res = await fetch(`${API_URL}/articles/${articleId}/comments`, {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token },
+        body: formData
       });
 
-      fetchPost();
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+
+      alert('✅ 댓글이 작성되었습니다!');
+      this.reset();
       fetchComments();
-    });
+    } catch (error) {
+      alert('❌ 댓글 작성 실패: ' + error.message);
+    }
+  });
+}
+
+// 이미지 모달
+function setupImageModal() {
+  document.addEventListener('click', e => {
+    if (e.target.tagName === 'IMG' && e.target.closest('.post, .comment-section')) {
+      const modal = document.getElementById('imageModal');
+      const modalImg = document.getElementById('modalImage');
+      modalImg.src = e.target.src;
+      modal.style.display = 'flex';
+    }
+  });
+
+  document.getElementById('imageModal').addEventListener('click', function () {
+    this.style.display = 'none';
+  });
+}
+
+// 댓글 좋아요 / 삭제 이벤트 처리
+window.addEventListener('click', async (e) => {
+  if (e.target.classList.contains('comment-like-btn')) {
+    const commentId = e.target.dataset.commentId;
+    if (!token) return alert('로그인이 필요합니다!');
+    try {
+      const res = await fetch(`${API_URL}/comments/${commentId}/like`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + token
+        }
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      alert('👍 좋아요를 눌렀습니다!');
+      fetchComments();
+    } catch (err) {
+      alert('❌ ' + err.message);
+    }
+  }
+
+  if (e.target.classList.contains('comment-delete-btn')) {
+    const commentId = e.target.dataset.commentId;
+    if (!token) return alert('로그인이 필요합니다!');
+    try {
+      const res = await fetch(`${API_URL}/comments/${commentId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': 'Bearer ' + token }
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      alert('🗑 댓글이 삭제되었습니다.');
+      fetchComments();
+    } catch (err) {
+      alert('❌ ' + err.message);
+    }
+  }
+});
+
   </script>
 </body>
 </html>

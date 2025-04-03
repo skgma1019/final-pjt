@@ -79,12 +79,17 @@ db.run(`
     content TEXT NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     image_url TEXT,
+    parent_id INTEGER,  -- 대댓글을 위한 parent_id 추가
     FOREIGN KEY (article_id) REFERENCES articles(id),
-    FOREIGN KEY (user_id) REFERENCES users(id)
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (parent_id) REFERENCES comments(id)  -- 대댓글의 부모 댓글 참조
   );
 `, (err) => {
-  if (err) console.error('❌ comments 테이블 생성 오류:', err.message);
-  else console.log('✅ comments 테이블 생성 완료');
+  if (err) {
+    console.error('❌ comments 테이블 생성 오류:', err.message);
+  } else {
+    console.log('✅ comments 테이블 생성 완료');
+  }
 });
 
 // likes 테이블 (게시글 좋아요)

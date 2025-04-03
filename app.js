@@ -15,7 +15,8 @@ const PORT = 3000;
 app.use(cors());
 app.use(bodyParser.json());
 app.use('/uploads', express.static('uploads')); // 이미지 접근 경로 추가
-
+app.use(express.json());  // JSON 파싱 미들웨어
+app.use('/users', playerRouter);  // '/users' 경로에서 playerRouter 사용
 app.use('/', articleRouter);
 app.use('/', playerRouter);
 app.use('/', commentRouter);
